@@ -1,0 +1,17 @@
+# Operating System
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python cache & temporary test scripts
+__pycache__/
+*.pyc
+*.pyo
+check_ltfm_stands.py
+inspect_ltfm_taxiways.py
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo

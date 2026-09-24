@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Airport Ground Ops - Sabiha Gökçen & İstanbul Havalimanı Canlı Yer Trafiği</title>
+  
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <!-- Application CSS -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Top Header Navigation -->
+  <header class="app-header">
+    <div class="logo-section">
+      <div class="logo-badge">GROUND-OPS</div>
+      <div>
+        <h1 class="app-title">Havalimanı Yer Operasyonları & Canlı Trafik Simülatörü</h1>
+        <div class="app-subtitle">Sabiha Gökçen (LTFJ) & İstanbul Havalimanı (LTFM)</div>
+      </div>
+    </div>
+
+    <div class="header-controls">
+      <!-- Airport Selector Dropdown (Exclusive to LTFJ and LTFM) -->
+      <div class="airport-selector-wrap">
+        <label for="airportSelect" style="font-size: 11px; color: var(--text-muted); margin-right: 6px; font-weight: 600;">MEYDAN:</label>
+        <select id="airportSelect" class="airport-select">
+          <option value="LTFJ" selected>LTFJ - Sabiha Gökçen (SAW)</option>
+          <option value="LTFM">LTFM - İstanbul Havalimanı (IST)</option>
+        </select>
+        <button id="btnRefreshAirport" class="btn btn-primary" title="Havalimanını Yeniden Yükle">Yenile</button>
+      </div>
+
+      <!-- Status Indicator -->
+      <div class="status-badge">
+        <span class="status-dot"></span>
+        <span id="statusText">Hazır</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Application Workspace -->
+  <main class="main-container">
+    
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Live Aircraft HUD / Inspector Panel (Appears on clicking an aircraft) -->
+    <div id="aircraftHUD" class="aircraft-hud-panel hidden">
+      <div class="hud-header">
+        <div class="hud-title-box">
+          <span id="hudCallsign" class="hud-callsign">TK 1285</span>
+          <span id="hudAirline" class="hud-airline">Türk Hava Yolları</span>
+          <span id="hudReg" class="hud-reg">TC-LNC (A321neo)</span>
+        </div>
+        <div class="hud-actions">
+          <button id="btnHudFollow" class="btn-hud-tool" title="Kamera ile Uçağı Takip Et">🎯 Takip</button>
+          <button id="btnHudClose" class="btn-hud-close" title="Kapat">✕</button>
+        </div>
+      </div>
+
+      <!-- Live Flight Telemetry (Updates continuously as simulation runs) -->
+      <div class="hud-telemetry-grid">
+        <div class="hud-metric">
+          <span class="hud-metric-label">YER HIZI (GS)</span>
+          <span class="hud-metric-val"><span id="hudSpeed">16</span> <small>kt</small></span>
+        </div>
+        <div class="hud-metric">
+          <span class="hud-metric-label">İRTİFA (ALT)</span>
+          <span class="hud-metric-val"><span id="hudAlt">0</span> <small>ft</small></span>
+        </div>
+        <div class="hud-metric">
+          <span class="hud-metric-label">BAŞ AÇISI (HDG)</span>
+          <span class="hud-metric-val"><span id="hudHeading">088</span><small>°</small></span>
+        </div>
+        <div class="hud-metric">
+          <span class="hud-metric-label">DURUM / FAZ</span>
+          <span id="hudPhase" class="hud-phase-badge">Taksi Yapıyor</span>
+        </div>
+      </div>
+
+      <!-- Real-time Active Taxiway Highlight -->
+      <div class="hud-taxiway-box">
+        <div class="hud-twy-label">ŞU ANKİ KONUM / TAKSİ YOLU:</div>
+        <div id="hudCurrentTwy" class="hud-twy-active">TWY B4B</div>
+      </div>
+
+      <!-- Full Assigned Taxi Clearance Sequence -->
+      <div class="hud-sequence-box">
+        <div class="hud-sequence-title">ATANAN TAKSİ ROTASI:</div>
+        <div id="hudTaxiSequence" class="hud-sequence-tags">
+          <span class="twy-tag done">A4</span>
+          <span class="twy-tag done">B4A</span>
+          <span class="twy-tag active">B4B</span>
+          <span class="twy-tag">C5A</span>
+          <span class="twy-tag">N1</span>
+          <span class="twy-tag">T11</span>
+          <span class="twy-tag dest">F13</span>
+        </div>
+      </div>
+
+      <div class="hud-footer">
+        <div class="hud-route-text">Hedef: <b id="hudDestStand" style="color: var(--accent-cyan);">Stand F13</b> | Rota: <span id="hudRoute">IST ➔ JFK</span></div>
+      </div>
+    </div>
+
+    <!-- Bottom Timeline Player Bar -->
+    <div class="timeline-bar">
+      <div class="timeline-top-row">
+        <div class="timeline-playback-controls">
+          <button id="btnPlayPause" class="btn-play" title="Oynat / Duraklat">⏸</button>
+          <div class="timeline-clock">
+            <span id="digitalClock" class="digital-time">08:15:00</span>
+            <span class="digital-label">SİMÜLASYON SAATİ (TRT)</span>
+          </div>
+          <div class="timeline-speed-selector">
+            <button class="speed-btn" data-speed="1">1x</button>
+            <button class="speed-btn" data-speed="5">5x</button>
+            <button class="speed-btn active" data-speed="15">15x</button>
+            <button class="speed-btn" data-speed="30">30x</button>
+            <button class="speed-btn" data-speed="60">60x</button>
+          </div>
+        </div>
+
+        <!-- Live Traffic Metrics -->
+        <div class="timeline-traffic-metrics">
+          <div class="traffic-badge" title="Toplam Günlük Uçuş Programı">
+            <span style="color: #cbd5e1;">📋 Toplam Uçuş:</span>
+            <span id="trafficTotalDay" class="count">648</span>
+          </div>
+          <div class="traffic-badge" title="Piste İniş / Yaklaşmadaki Uçaklar">
+            <span style="color: #38bdf8;">🛬 İniş:</span>
+            <span id="trafficApproaching" class="count">0</span>
+          </div>
+          <div class="traffic-badge" title="Taksi Yollarındaki Uçaklar">
+            <span style="color: #f59e0b;">🚕 Taksi:</span>
+            <span id="trafficTaxiing" class="count">0</span>
+          </div>
+          <div class="traffic-badge" title="Park Pozisyonundaki Uçaklar">
+            <span style="color: #10b981;">🅿️ Parkta:</span>
+            <span id="trafficOnStand" class="count">0</span>
+          </div>
+          <div class="traffic-badge" title="Pistten Havalanan Uçaklar">
+            <span style="color: #ef4444;">🛫 Kalkış:</span>
+            <span id="trafficTakeoff" class="count">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scrubber Slider -->
+      <div class="timeline-slider-row">
+        <span class="time-marker-text">00:00</span>
+        <input type="range" id="timelineSlider" class="timeline-slider" min="0" max="86399" value="29700" step="1">
+        <span class="time-marker-text">23:59</span>
+      </div>
+    </div>
+
+    <!-- Collapsible / Interactive Sidebar -->
+    <aside class="sidebar">
+      
+      <!-- Sidebar Navigation Tabs -->
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" data-tab="tab-stands">STANDLAR</button>
+        <button class="tab-btn" data-tab="tab-editor">BİLGİ İŞLEME</button>
+        <button class="tab-btn" data-tab="tab-data">FLIGHTRADAR & VERİ</button>
+      </div>
+
+      <div class="sidebar-content">
+        
+        <!-- Tab 1: Stands List & Search -->
+        <div id="tab-stands" class="tab-pane active">
+          <div class="search-filter-box">
+            <div class="search-input-wrap">
+              <input type="text" id="standSearchInput" class="search-input" placeholder="Stand / Kapı No Ara (Örn: F13, D5, 201A)...">
+            </div>
+            <div class="filter-chips">
+              <button class="chip active" data-filter="all">Tümü (<span id="countAll">0</span>)</button>
+              <button class="chip" data-filter="free">Boş (<span id="countFree">0</span>)</button>
+              <button class="chip" data-filter="occupied">Dolu (<span id="countOccupied">0</span>)</button>
+              <button class="chip" data-filter="maintenance">Bakım (<span id="countMaintenance">0</span>)</button>
+            </div>
+          </div>
+
+          <div id="standsList" class="stands-grid">
+            <!-- Stand cards dynamically rendered here -->
+          </div>
+        </div>
+
+        <!-- Tab 2: Stand / Flight Data Editor -->
+        <div id="tab-editor" class="tab-pane">
+          <div class="editor-card">
+            <div class="selected-stand-banner">
+              <div>
+                <div class="stat-label">SEÇİLİ PARK POZİSYONU</div>
+                <div id="editorStandRef" class="big-stand-ref">-</div>
+              </div>
+              <div id="editorStandBadge" class="status-badge">
+                <span class="status-dot"></span>
+                <span id="editorStatusText">Seçim Yapılmadı</span>
+              </div>
+            </div>
+
+            <form id="standEditForm">
+              <input type="hidden" id="editStandId">
+
+              <div class="form-group">
+                <label class="form-label" for="editStatus">Pozisyon Durumu</label>
+                <select id="editStatus" class="form-control">
+                  <option value="free">BOŞ (Available / Free)</option>
+                  <option value="occupied">DOLU (Occupied / On Stand)</option>
+                  <option value="boarding">BORDİNG / ÇIKIŞ (Boarding / Pushback)</option>
+                  <option value="maintenance">BAKIMDA (Out of Service / Maintenance)</option>
+                  <option value="nightstop">YATILI PARK (Night Stop)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="editFlight">Uçuş Kodu</label>
+                <input type="text" id="editFlight" class="form-control form-control-mono" placeholder="Örn: PC 2024, TK 1923">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="editAircraft">Uçak Tescil & Model</label>
+                <input type="text" id="editAircraft" class="form-control form-control-mono" placeholder="Örn: TC-NBC (A321neo)">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="editTimeIn">Giriş / Varış Saati (ETA/ATA)</label>
+                <input type="time" id="editTimeIn" class="form-control">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="editTimeOut">Çıkış / Kalkış Saati (ETD/ATD)</label>
+                <input type="time" id="editTimeOut" class="form-control">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="editNotes">Yer Hizmeti & Operasyon Notları</label>
+                <textarea id="editNotes" class="form-control" rows="3" placeholder="Yakıt ikmali yapıldı, de-icing talebi var, körük bağlı vb..."></textarea>
+              </div>
+
+              <div class="btn-group">
+                <button type="button" id="btnResetStand" class="btn">Boşalt / Temizle</button>
+                <button type="submit" class="btn btn-primary">Kaydet & İşle</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Tab 3: Data Management & Export -->
+        <div id="tab-data" class="tab-pane">
+          <!-- Overview Stats -->
+          <div class="stats-container">
+            <div class="stat-box">
+              <div id="statTotalStands" class="stat-value">0</div>
+              <div class="stat-label">Toplam Stand</div>
+            </div>
+            <div class="stat-box">
+              <div id="statOccupancyRate" class="stat-value">0%</div>
+              <div class="stat-label">Doluluk Oranı</div>
+            </div>
+            <div class="stat-box">
+              <div id="statRunways" class="stat-value">0</div>
+              <div class="stat-label">Pist Sayısı</div>
+            </div>
+            <div class="stat-box">
+              <div id="statTaxiways" class="stat-value">0</div>
+              <div class="stat-label">Taksi Yolu Hattı</div>
+            </div>
+          </div>
+
+          <!-- Flightradar24 Import Action -->
+          <div class="data-actions-box">
+            <h4>Flightradar24 Verisi İçe Aktar</h4>
+            <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
+              Elinizdeki Flightradar24 CSV veya JSON uçuş kayıt dosyasını yükleyerek tam uçuş listesini simülasyona aktarabilirsiniz.
+            </p>
+            <div class="action-row">
+              <input type="file" id="fileImportFlightradar" accept=".csv,.json" style="display: none;">
+              <button id="btnImportFlightradar" class="btn btn-primary">📁 Flightradar24 Dosyası Yükle (CSV/JSON)</button>
+            </div>
+          </div>
+
+          <!-- Export Actions -->
+          <div class="data-actions-box">
+            <h4>Operasyonel Veri Dışa Aktarma</h4>
+            <div class="action-row">
+              <button id="btnExportJSON" class="btn">İşlenmiş Veriyi İndir (JSON)</button>
+              <button id="btnExportGeoJSON" class="btn">Havalimanı Şemasını İndir (GeoJSON)</button>
+            </div>
+          </div>
+
+          <!-- Stand Import Actions -->
+          <div class="data-actions-box">
+            <h4>Yedek İçe Aktarma & Sıfırlama</h4>
+            <div class="action-row">
+              <input type="file" id="fileImportJSON" accept=".json" style="display: none;">
+              <button id="btnImportJSON" class="btn">JSON Yedek Yükle</button>
+              <button id="btnClearAllData" class="btn" style="color: var(--accent-red);">Tüm Girişleri Sıfırla</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast">Bildirim</div>
+
+  <!-- Leaflet Map JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- App JS Files -->
+  <script src="js/overpass.js"></script>
+  <script src="js/taxiway-router.js"></script>
+  <script src="js/aircraft-marker.js"></script>
+  <script src="js/traffic-simulator.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
