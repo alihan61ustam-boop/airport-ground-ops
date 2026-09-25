@@ -256,6 +256,15 @@ function setupUIEvents() {
 // ==============================================================
 // GEÇİCİ HOŞGELDİN POPUP YÖNETİMİ - Sonraki buildde kaldırılacak
 // ==============================================================
+function closeWelcomeModal() {
+  const modal = document.getElementById("welcomeModal");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.style.display = "none";
+  }
+}
+window.closeWelcomeModal = closeWelcomeModal;
+
 function initWelcomeModal() {
   const modal = document.getElementById("welcomeModal");
   const btnClose = document.getElementById("btnCloseWelcomeModal");
@@ -263,24 +272,29 @@ function initWelcomeModal() {
 
   if (!modal) return;
 
-  // Open modal automatically on page load
-  modal.classList.add("active");
+  modal.classList.remove("hidden");
+  modal.style.display = "flex";
 
-  const closeModal = () => {
-    modal.classList.remove("active");
-  };
+  if (btnClose) {
+    btnClose.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeWelcomeModal();
+    });
+  }
 
-  if (btnClose) btnClose.addEventListener("click", closeModal);
-  if (btnStart) btnStart.addEventListener("click", closeModal);
+  if (btnStart) {
+    btnStart.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeWelcomeModal();
+    });
+  }
 
   modal.addEventListener("click", (e) => {
-    if (e.target === modal) closeModal();
+    if (e.target === modal) closeWelcomeModal();
   });
 
   window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && modal.classList.contains("active")) {
-      closeModal();
-    }
+    if (e.key === "Escape") closeWelcomeModal();
   });
 }
 

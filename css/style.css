@@ -2144,6 +2144,10 @@ body {
   padding: 16px;
 }
 
+.welcome-modal-overlay.hidden {
+  display: none !important;
+}
+
 .welcome-modal-card {
   max-width: 520px;
   width: 100%;

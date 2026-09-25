@@ -458,9 +458,9 @@
   <!-- ============================================================== -->
   <!-- GEÇİCİ HOŞGELDİN POPUP - Sonraki buildde kaldırılacak          -->
   <!-- ============================================================== -->
-  <div id="welcomeModal" class="modal-overlay welcome-modal-overlay">
+  <div id="welcomeModal" class="modal-overlay welcome-modal-overlay" onclick="if(event.target===this)closeWelcomeModal()">
     <div class="welcome-modal-card">
-      <button id="btnCloseWelcomeModal" class="welcome-close-btn" title="Kapat">✕</button>
+      <button id="btnCloseWelcomeModal" class="welcome-close-btn" title="Kapat" onclick="closeWelcomeModal()">✕</button>
       <div class="welcome-modal-content">
         <div class="welcome-badge-icon">✈️</div>
         <div class="welcome-header-tag">ÖZEL KARŞILAMA</div>
@@ -486,7 +486,7 @@
         </div>
 
         <div class="welcome-actions">
-          <button id="btnStartWelcome" class="btn btn-welcome-start">
+          <button id="btnStartWelcome" class="btn btn-welcome-start" onclick="closeWelcomeModal()">
             <span>🚀 Haritaya Geç & Başla</span>
           </button>
         </div>
