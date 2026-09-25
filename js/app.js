@@ -101,6 +101,35 @@ function initMap() {
 }
 
 function setupUIEvents() {
+  // Mobile / Tablet sidebar drawer toggling
+  const btnToggle = document.getElementById("btnToggleSidebar");
+  const btnClose = document.getElementById("btnCloseSidebar");
+  const backdrop = document.getElementById("sidebarBackdrop");
+  const sidebar = document.querySelector(".sidebar");
+
+  const openSidebar = () => {
+    if (sidebar) sidebar.classList.add("open");
+    if (backdrop) backdrop.classList.add("show");
+  };
+
+  const closeSidebar = () => {
+    if (sidebar) sidebar.classList.remove("open");
+    if (backdrop) backdrop.classList.remove("show");
+  };
+
+  if (btnToggle) {
+    btnToggle.addEventListener("click", () => {
+      if (sidebar && sidebar.classList.contains("open")) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
+    });
+  }
+
+  if (btnClose) btnClose.addEventListener("click", closeSidebar);
+  if (backdrop) backdrop.addEventListener("click", closeSidebar);
+
   // Tab switching
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -110,6 +139,10 @@ function setupUIEvents() {
       btn.classList.add("active");
       const targetPane = document.getElementById(btn.dataset.tab);
       if (targetPane) targetPane.classList.add("active");
+
+      if (btn.dataset.tab === "tab-stands") {
+        renderStandsList(document.getElementById("standSearchInput")?.value || "");
+      }
     });
   });
 
@@ -231,7 +264,16 @@ function selectAircraft(flightId) {
 
   // Populate Header
   document.getElementById("hudCallsign").textContent = flight.callsign;
-  document.getElementById("hudAirline").textContent = (AIRLINE_LIVERIES[flight.airline]?.name || flight.airline);
+  const livery = window.AircraftMarkerManager?.getLivery(flight.airline);
+  const hudAirlineEl = document.getElementById("hudAirline");
+  if (livery && hudAirlineEl) {
+    hudAirlineEl.innerHTML = `${livery.logoSvg || ''} <span>${livery.name} (${livery.displayTag})</span>`;
+    hudAirlineEl.style.display = "inline-flex";
+    hudAirlineEl.style.alignItems = "center";
+    hudAirlineEl.style.gap = "6px";
+  } else if (hudAirlineEl) {
+    hudAirlineEl.textContent = flight.airline;
+  }
   document.getElementById("hudReg").textContent = `${flight.registration} (${flight.type})`;
   document.getElementById("hudDestStand").textContent = `Stand ${flight.standRef}`;
   document.getElementById("hudRoute").textContent = `${flight.origin} ➔ ${flight.destination}`;
@@ -385,10 +427,18 @@ function renderHUDSequenceTags(flight) {
 /**
  * Real-time callback triggered when simulation changes stand occupancy
  */
+let lastStandsListRenderTime = 0;
 function onStandOccupancyChanged() {
-  const currentSearch = document.getElementById("standSearchInput")?.value || "";
-  renderStandsList(currentSearch);
+  updateStandCounterChips();
   updateStatistics();
+
+  const isStandsTabActive = document.getElementById("tab-stands")?.classList.contains("active");
+  const now = performance.now();
+  if (isStandsTabActive && (now - lastStandsListRenderTime > 1200)) {
+    lastStandsListRenderTime = now;
+    const currentSearch = document.getElementById("standSearchInput")?.value || "";
+    renderStandsList(currentSearch);
+  }
 
   if (activeStandId && standsMap.has(activeStandId)) {
     const standObj = standsMap.get(activeStandId);
@@ -398,6 +448,32 @@ function onStandOccupancyChanged() {
   }
 }
 window.onStandOccupancyChanged = onStandOccupancyChanged;
+
+function updateStandCounterChips() {
+  let totalCount = 0;
+  let freeCount = 0;
+  let occupiedCount = 0;
+  let maintenanceCount = 0;
+
+  standsMap.forEach(stand => {
+    totalCount++;
+    const status = stand.customData?.status || "free";
+    const isOccupied = (status === "occupied" || status === "boarding" || status === "nightstop");
+    if (status === "free") freeCount++;
+    else if (isOccupied) occupiedCount++;
+    else if (status === "maintenance") maintenanceCount++;
+  });
+
+  const countAllEl = document.getElementById("countAll");
+  const countFreeEl = document.getElementById("countFree");
+  const countOccupiedEl = document.getElementById("countOccupied");
+  const countMaintEl = document.getElementById("countMaintenance");
+
+  if (countAllEl) countAllEl.textContent = totalCount;
+  if (countFreeEl) countFreeEl.textContent = freeCount;
+  if (countOccupiedEl) countOccupiedEl.textContent = occupiedCount;
+  if (countMaintEl) countMaintEl.textContent = maintenanceCount;
+}
 
 /**
  * Bottom Timeline Bar Controls
@@ -705,7 +781,15 @@ function selectStand(standId) {
   }
 
   updateEditorFields(standObj);
-  document.querySelector('.tab-btn[data-tab="tab-editor"]').click();
+  document.querySelector('.tab-btn[data-tab="tab-editor"]')?.click();
+
+  // If on mobile/tablet screen, open the sidebar drawer automatically so editor is visible
+  if (window.innerWidth < 1024) {
+    const sidebar = document.querySelector(".sidebar");
+    const backdrop = document.getElementById("sidebarBackdrop");
+    if (sidebar) sidebar.classList.add("open");
+    if (backdrop) backdrop.classList.add("show");
+  }
 }
 
 function updateEditorFields(standObj) {

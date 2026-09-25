@@ -765,7 +765,7 @@ body {
   margin-top: 1px;
 }
 
-/* AIRCRAFT MARKER & SVG STYLES */
+/* AIRCRAFT MARKER & HIGH-VISIBILITY AIRLINE LOGO BADGE STYLES */
 .aircraft-marker-container {
   background: transparent !important;
   border: none !important;
@@ -773,41 +773,80 @@ body {
 
 .aircraft-wrapper {
   position: relative;
-  width: 46px;
-  height: 46px;
+  width: 60px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  will-change: transform;
 }
 
 .aircraft-wrapper.active-selection {
   z-index: 4000 !important;
 }
 
+/* High-Visibility Airline Emblem Badge Above Aircraft */
+.airline-brand-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 3.5px;
+  padding: 1.5px 5px;
+  border-radius: 10px;
+  border-width: 1px;
+  border-style: solid;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.85), 0 0 4px rgba(255, 255, 255, 0.2);
+  z-index: 10;
+  pointer-events: none;
+  transition: transform 0.15s ease;
+}
+
+.airline-emblem-svg {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.airline-brand-tag {
+  line-height: 1;
+}
+
 .aircraft-svg {
-  transition: transform 0.2s linear;
-  filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.8));
+  width: 42px;
+  height: 42px;
+  transform-origin: center center;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.75));
+  will-change: transform;
+  transition: transform 0.12s linear;
 }
 
 .aircraft-svg.selected-aircraft {
-  filter: drop-shadow(0 0 8px #00e5ff) !important;
+  filter: drop-shadow(0 0 10px #00e5ff) drop-shadow(0 0 4px #00e5ff) !important;
 }
 
 .aircraft-radar-label {
   position: absolute;
-  top: 42px;
+  bottom: -16px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(10, 15, 29, 0.88);
+  background: rgba(10, 15, 29, 0.92);
   border: 1px solid rgba(56, 189, 248, 0.4);
   border-radius: 4px;
-  padding: 1px 4px;
+  padding: 1px 5px;
   text-align: center;
   white-space: nowrap;
   pointer-events: none;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.6);
-  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  transition: border-color 0.2s, background-color 0.2s;
 }
 
 .aircraft-radar-label.selected {
@@ -819,8 +858,8 @@ body {
 .aircraft-radar-label .flight-code {
   display: block;
   font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 700;
+  font-size: 9.5px;
+  font-weight: 800;
   color: #38bdf8;
   line-height: 1.1;
 }
@@ -833,12 +872,82 @@ body {
   line-height: 1.1;
 }
 
+/* MOBILE DRAWER CONTROLS */
+.btn-sidebar-toggle {
+  display: none;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-main);
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-sidebar-toggle:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-cyan);
+}
+
+.sidebar-header-mobile {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-mobile-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-cyan);
+}
+
+.btn-close-sidebar {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: var(--accent-red);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(3px);
+  z-index: 1500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.sidebar-backdrop.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* BOTTOM TIMELINE CONTROLLER BAR */
 .timeline-bar {
   position: absolute;
   bottom: 16px;
   left: 20px;
-  right: 396px;
+  right: 380px;
   background: rgba(17, 24, 39, 0.95);
   backdrop-filter: blur(10px);
   border: 1px solid var(--border-color);
@@ -849,6 +958,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  transition: right 0.25s ease, left 0.25s ease, bottom 0.25s ease;
 }
 
 .timeline-top-row {
@@ -862,22 +972,24 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .btn-play {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
   border: none;
   color: #fff;
-  font-size: 15px;
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 0 12px rgba(6, 182, 212, 0.5);
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .btn-play:hover {
@@ -891,16 +1003,18 @@ body {
 
 .digital-time {
   font-family: var(--font-mono);
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 800;
   color: var(--accent-cyan);
   letter-spacing: 1px;
+  line-height: 1.1;
 }
 
 .digital-label {
   font-size: 9px;
   color: var(--text-dim);
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .timeline-speed-selector {
@@ -913,7 +1027,7 @@ body {
 }
 
 .speed-btn {
-  padding: 4px 8px;
+  padding: 3px 7px;
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -937,9 +1051,15 @@ body {
 .timeline-traffic-metrics {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   font-size: 11px;
   font-family: var(--font-mono);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.timeline-traffic-metrics::-webkit-scrollbar {
+  display: none;
 }
 
 .traffic-badge {
@@ -950,6 +1070,8 @@ body {
   border: 1px solid var(--border-color);
   padding: 3px 8px;
   border-radius: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .traffic-badge .count {
@@ -1022,3 +1144,222 @@ body {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* ========================================================= */
+/* COMPREHENSIVE RESPONSIVE MULTI-DEVICE OPTIMIZATION        */
+/* ========================================================= */
+
+/* 1. Tablet & Medium Screens (< 1024px) */
+@media (max-width: 1024px) {
+  .btn-sidebar-toggle {
+    display: inline-flex;
+  }
+
+  .sidebar-header-mobile {
+    display: flex;
+  }
+
+  .sidebar-backdrop {
+    display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 360px;
+    z-index: 2000;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: -8px 0 35px rgba(0, 0, 0, 0.85);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .timeline-bar {
+    right: 14px;
+    left: 14px;
+    bottom: 14px;
+    padding: 10px 14px;
+  }
+
+  .aircraft-hud-panel {
+    top: 14px;
+    left: 14px;
+    max-width: 350px;
+    width: auto;
+    max-height: calc(100vh - 170px);
+    overflow-y: auto;
+  }
+
+  .toast {
+    right: 20px;
+  }
+}
+
+/* 2. Mobile Phones (< 768px) */
+@media (max-width: 768px) {
+  body {
+    height: 100dvh;
+  }
+
+  .app-header {
+    height: 48px;
+    padding: 0 10px;
+    gap: 8px;
+  }
+
+  .logo-badge {
+    padding: 3px 6px;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+
+  .app-title {
+    font-size: 12.5px;
+    line-height: 1.2;
+  }
+
+  .app-subtitle {
+    display: none;
+  }
+
+  .airport-selector-wrap {
+    padding: 2px 4px;
+  }
+
+  .airport-select {
+    font-size: 11px;
+    max-width: 135px;
+    padding: 2px 4px;
+  }
+
+  .status-badge {
+    display: none;
+  }
+
+  .btn-sidebar-toggle {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .btn-sidebar-toggle .toggle-text {
+    display: none;
+  }
+
+  /* HUD on mobile */
+  .aircraft-hud-panel {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    max-width: none;
+    width: auto;
+    padding: 10px 12px;
+    max-height: 44vh;
+    border-radius: 8px;
+  }
+
+  .hud-callsign {
+    font-size: 17px;
+  }
+
+  .hud-telemetry-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .hud-metric {
+    padding: 6px 8px;
+  }
+
+  .hud-metric-val {
+    font-size: 14px;
+  }
+
+  /* Timeline Bar on mobile */
+  .timeline-bar {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    padding: 8px 10px;
+    gap: 6px;
+    border-radius: 10px;
+  }
+
+  .timeline-top-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .digital-time {
+    font-size: 15px;
+  }
+
+  .digital-label {
+    display: none;
+  }
+
+  .speed-btn {
+    padding: 2px 5px;
+    font-size: 10px;
+  }
+
+  .timeline-traffic-metrics {
+    width: 100%;
+    order: 3;
+    padding-top: 2px;
+    gap: 5px;
+  }
+
+  .traffic-badge {
+    font-size: 9.5px;
+    padding: 2px 5px;
+  }
+
+  /* Full screen sidebar on mobile */
+  .sidebar {
+    width: 100vw;
+    max-width: 100vw;
+  }
+
+  .toast {
+    left: 12px;
+    right: 12px;
+    top: 56px;
+    text-align: center;
+  }
+}
+
+/* 3. Small Mobile (< 400px) */
+@media (max-width: 400px) {
+  .airport-select {
+    max-width: 105px;
+  }
+
+  .timeline-speed-selector {
+    display: none;
+  }
+}
+
+/* 4. Landscape Mobile / Short Heights (< 600px height) */
+@media (max-height: 600px) {
+  .aircraft-hud-panel {
+    max-height: 52vh;
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .hud-sequence-box {
+    display: none;
+  }
+
+  .timeline-bar {
+    padding: 6px 10px;
+    gap: 4px;
+    bottom: 6px;
+  }
+}
+

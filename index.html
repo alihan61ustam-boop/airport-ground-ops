@@ -42,6 +42,12 @@
         <span class="status-dot"></span>
         <span id="statusText">Hazır</span>
       </div>
+
+      <!-- Mobile / Tablet Sidebar Drawer Toggle Button -->
+      <button id="btnToggleSidebar" class="btn btn-sidebar-toggle" title="Stand ve Operasyon Paneli">
+        <span class="toggle-icon">☰</span>
+        <span class="toggle-text">Panel</span>
+      </button>
     </div>
   </header>
 
@@ -164,6 +170,12 @@
     <!-- Collapsible / Interactive Sidebar -->
     <aside class="sidebar">
       
+      <!-- Mobile Drawer Close Header -->
+      <div class="sidebar-header-mobile">
+        <span class="sidebar-mobile-title">Yer Operasyon Paneli</span>
+        <button id="btnCloseSidebar" class="btn-close-sidebar" title="Paneli Kapat">✕</button>
+      </div>
+
       <!-- Sidebar Navigation Tabs -->
       <div class="sidebar-tabs">
         <button class="tab-btn active" data-tab="tab-stands">STANDLAR</button>
@@ -309,6 +321,9 @@
 
       </div>
     </aside>
+
+    <!-- Mobile Drawer Backdrop Overlay -->
+    <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
   </main>
 
