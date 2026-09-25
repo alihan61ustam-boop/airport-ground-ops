@@ -203,51 +203,77 @@ class TaxiwayGraphRouter {
    * Generates a complete flight trajectory connecting runway, taxiway graph route, and stand
    */
   generateAutonomousFlightTrajectory(isLTFM, standRef, standCoord, arrivalSec, groundTimeSec, flightIndex) {
-    const isOutboundOnly = false;
+    const airportCode = isLTFM ? "LTFM" : "LTFJ";
+    const rwyCfg = window.RunwayConfigManager
+      ? window.RunwayConfigManager.getCurrentConfig(airportCode)
+      : null;
 
-    // 1. Pick Runway Exit based on airport and alternative options
     let rwyThreshold, rwyTouchdown, rwyExits, rwyTakeoffHold, rwyTakeoffThreshold, rwyLiftoff;
+    let arrRwyName, depRwyName, mandatoryEntryName;
 
-    if (isLTFM) {
+    if (rwyCfg && rwyCfg.arrRunwayData && rwyCfg.depRunwayData) {
+      rwyThreshold = rwyCfg.arrRunwayData.threshold;
+      rwyTouchdown = rwyCfg.arrRunwayData.touchdown;
+      rwyExits = rwyCfg.allowedExits && rwyCfg.allowedExits.length > 0
+        ? rwyCfg.allowedExits
+        : rwyCfg.allExits;
+      arrRwyName = rwyCfg.arrRunwayData.name;
+
+      // Strict Mandatory Departure Entry Taxiway
+      const mandatoryEntry = rwyCfg.mandatoryDepEntry;
+      rwyTakeoffHold = mandatoryEntry.holdPos;
+      rwyTakeoffThreshold = mandatoryEntry.lineupPos;
+      rwyLiftoff = rwyCfg.depRunwayData.liftoff;
+      depRwyName = rwyCfg.depRunwayData.name;
+      mandatoryEntryName = mandatoryEntry.name;
+    } else if (isLTFM) {
       rwyThreshold = [41.2985855, 28.7067348]; // 16R
       rwyTouchdown = [41.2879172, 28.7069417];
-      // Multiple alternative exits along Runway 16R/34L
       rwyExits = [
         { name: "A6A", pos: [41.2822509, 28.7070516] },
         { name: "A7A", pos: [41.2810494, 28.7070749] },
         { name: "A5A", pos: [41.2787340, 28.7071198] }
       ];
-      rwyTakeoffHold = [41.2619400, 28.7252200]; // 17L holding
+      rwyTakeoffHold = [41.2619400, 28.7252200];
       rwyTakeoffThreshold = [41.2619440, 28.7277350];
       rwyLiftoff = [41.2988196, 28.7270160];
+      arrRwyName = "RWY 16R";
+      depRwyName = "RWY 35R";
+      mandatoryEntryName = "B1";
     } else {
       rwyThreshold = [40.8926406, 29.2932050]; // 06L
       rwyTouchdown = [40.8955880, 29.3012193];
-      // Alternative exits along Runway 06L
       rwyExits = [
         { name: "TWY F", pos: [40.9002179, 29.3137768] },
         { name: "TWY L", pos: [40.8975949, 29.3066797] },
         { name: "TWY K", pos: [40.8958676, 29.3019640] }
       ];
-      rwyTakeoffHold = [40.8848511, 29.3025894]; // 06R holding
+      rwyTakeoffHold = [40.8848511, 29.3025894];
       rwyTakeoffThreshold = [40.8848978, 29.3027162];
       rwyLiftoff = [40.8987538, 29.3403920];
+      arrRwyName = "RWY 06L";
+      depRwyName = "RWY 06R";
+      mandatoryEntryName = "TWY A1";
     }
 
-    // Select exit distributed by flightIndex to prevent bottleneck
+    // Select exit flexibly among permitted exits to avoid bottlenecking (user requirement: "istenilen noktadan çıkış yapılabilsin")
     const exitChoice = rwyExits[flightIndex % rwyExits.length];
 
     // 2. Run graph routing from chosen Runway Exit to Stand
     const inboundRoute = this.findRoute(exitChoice.pos, standCoord, 0.4);
 
-    // 3. Run graph routing from Stand to Departure Runway Holding Point
+    // 3. Run graph routing from Stand to Departure Runway STRICT Mandatory Entry Holding Point
+    // Outbound taxi MUST strictly route to the chosen mandatory entry taxiway!
     const outboundRoute = this.findRoute(standCoord, rwyTakeoffHold, 0.4);
 
     const trajectory = [];
     let curTime = arrivalSec - 180;
 
     // Approach
-    const approachPt = [rwyThreshold[0] + (isLTFM ? 0.035 : -0.020), rwyThreshold[1] + (isLTFM ? 0.0 : -0.033)];
+    const approachPt = [
+      rwyThreshold[0] + (rwyThreshold[0] > rwyTouchdown[0] ? 0.035 : -0.035),
+      rwyThreshold[1] + (rwyThreshold[1] > rwyTouchdown[1] ? 0.025 : -0.025)
+    ];
     trajectory.push({
       time: curTime,
       pos: approachPt,
@@ -258,11 +284,11 @@ class TaxiwayGraphRouter {
     });
 
     curTime = arrivalSec - 30;
-    trajectory.push({ time: curTime, pos: rwyThreshold, phase: "landing", speed: 135, alt: 50, twyName: isLTFM ? "RWY 16R" : "RWY 06L" });
+    trajectory.push({ time: curTime, pos: rwyThreshold, phase: "landing", speed: 135, alt: 50, twyName: arrRwyName });
     curTime = arrivalSec;
-    trajectory.push({ time: curTime, pos: rwyTouchdown, phase: "landing", speed: 115, alt: 0, twyName: isLTFM ? "RWY 16R" : "RWY 06L" });
+    trajectory.push({ time: curTime, pos: rwyTouchdown, phase: "landing", speed: 115, alt: 0, twyName: arrRwyName });
     curTime += 40;
-    trajectory.push({ time: curTime, pos: exitChoice.pos, phase: "landing", speed: 45, alt: 0, twyName: exitChoice.name });
+    trajectory.push({ time: curTime, pos: exitChoice.pos, phase: "landing", speed: 45, alt: 0, twyName: `Çıkış: ${exitChoice.name}` });
 
     // Append graph-traced inbound taxiway waypoints (every single point is on orange taxiway lines)
     if (inboundRoute && inboundRoute.coords.length > 0) {
@@ -316,7 +342,7 @@ class TaxiwayGraphRouter {
       twyName: "Pushback"
     });
 
-    // Outbound taxiway graph path to holding point
+    // Outbound taxiway graph path strictly to the Mandatory Entry holding point
     if (outboundRoute && outboundRoute.coords.length > 0) {
       const stepDuration = Math.max(3, Math.floor(240 / outboundRoute.coords.length));
       outboundRoute.coords.forEach((coord, idx) => {
@@ -329,13 +355,13 @@ class TaxiwayGraphRouter {
           phase: isHold ? "holding" : "taxi_out",
           speed: isHold ? 10 : 16,
           alt: 0,
-          twyName: isHold ? `${twyTag} (Hold)` : twyTag,
+          twyName: isHold ? `Zorunlu Giriş: TWY ${mandatoryEntryName} (Hold)` : twyTag,
           isHoldingPoint: isHold
         });
       });
     }
 
-    // Lineup on takeoff runway
+    // Lineup on takeoff runway strictly from the mandatory entry point
     curTime += 20;
     trajectory.push({
       time: curTime,
@@ -343,7 +369,7 @@ class TaxiwayGraphRouter {
       phase: "takeoff",
       speed: 40,
       alt: 0,
-      twyName: isLTFM ? "RWY 17L" : "RWY 06R"
+      twyName: `${depRwyName} Lineup (via ${mandatoryEntryName})`
     });
 
     // Takeoff roll and climbout
@@ -354,11 +380,14 @@ class TaxiwayGraphRouter {
       phase: "takeoff",
       speed: 160,
       alt: 20,
-      twyName: isLTFM ? "RWY 17L" : "RWY 06R"
+      twyName: depRwyName
     });
 
     curTime += 80;
-    const climbPt = [rwyLiftoff[0] + (isLTFM ? 0.035 : 0.025), rwyLiftoff[1] + (isLTFM ? 0.0 : 0.040)];
+    const climbPt = [
+      rwyLiftoff[0] + (rwyLiftoff[0] > rwyTakeoffThreshold[0] ? 0.035 : -0.035),
+      rwyLiftoff[1] + (rwyLiftoff[1] > rwyTakeoffThreshold[1] ? 0.030 : -0.030)
+    ];
     trajectory.push({
       time: curTime,
       pos: climbPt,
@@ -370,11 +399,12 @@ class TaxiwayGraphRouter {
 
     const fullRoute = trajectory.map(t => t.pos);
     const twySequence = [
-      exitChoice.name,
+      `Çıkış: ${exitChoice.name}`,
       ...(inboundRoute?.twyNames || []),
       `Stand ${standRef}`,
       ...(outboundRoute?.twyNames || []),
-      isLTFM ? "RWY 17L" : "RWY 06R"
+      `Zorunlu Giriş: ${mandatoryEntryName}`,
+      depRwyName
     ];
 
     return {

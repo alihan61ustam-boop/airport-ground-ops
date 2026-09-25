@@ -87,6 +87,58 @@ class GroundTrafficSimulator {
   }
 
   /**
+   * Re-routes all flights immediately when runway configuration or mandatory entry changes
+   */
+  rebuildFlightTrajectories() {
+    if (!window.TaxiwayGraphRouter || !window.TaxiwayGraphRouter.isGraphReady) return;
+    if (window.TaxiwayGraphRouter.edgeUsageMap) {
+      window.TaxiwayGraphRouter.edgeUsageMap.clear();
+    }
+    const isLTFM = (this.airportIcao === "LTFM");
+    const baseStands = this.getAirportStands();
+
+    this.flights.forEach((f, idx) => {
+      let standObj = baseStands.find(s => s.ref === f.standRef);
+      if (!standObj) {
+        const midPt = f.fullRoute ? f.fullRoute[Math.floor(f.fullRoute.length / 2)] : null;
+        standObj = {
+          ref: f.standRef,
+          lat: midPt ? midPt[0] : (isLTFM ? 41.265 : 40.90),
+          lon: midPt ? midPt[1] : (isLTFM ? 28.74 : 29.31)
+        };
+      }
+      const arrivalSec = f.startTime + 180;
+      const groundTimeSec = Math.max(30 * 60, (f.endTime - 130) - arrivalSec);
+
+      const routeData = window.TaxiwayGraphRouter.generateAutonomousFlightTrajectory(
+        isLTFM,
+        f.standRef,
+        [standObj.lat, standObj.lon],
+        arrivalSec,
+        groundTimeSec,
+        idx + 1
+      );
+      f.trajectory = routeData.trajectory;
+      f.fullRoute = routeData.fullRoute;
+      f.twySequence = routeData.twySequence;
+    });
+
+    this.refreshActiveFlightsCache(true);
+    this.updateSimulation(0, true);
+
+    if (window.selectedFlightId) {
+      const activeFlight = this.flights.find(f => f.id === window.selectedFlightId);
+      if (activeFlight && typeof window.drawBlueTaxiRoute === "function") {
+        window.drawBlueTaxiRoute(activeFlight);
+      }
+      if (activeFlight && typeof window.updateLiveHUD === "function") {
+        window.updateLiveHUD(activeFlight);
+      }
+    }
+    console.log(`[TrafficSimulator] Rebuilt flight trajectories for ${this.flights.length} flights with active runway config.`);
+  }
+
+  /**
    * Generates realistic flights for LTFJ (Sabiha Gökçen)
    * Primary carriers: Pegasus (PC/PGT), AJet (VF/AJT), THY (TK/THY), Flydubai (FZ/FDB), Air Arabia (G9/ABY)
    */

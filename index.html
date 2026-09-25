@@ -37,6 +37,13 @@
         <button id="btnRefreshAirport" class="btn btn-primary" title="Havalimanını Yeniden Yükle">Yenile</button>
       </div>
 
+      <!-- Runway & Direction ATC Control Button -->
+      <button id="btnRunwayModalOpen" class="btn-runway-config" title="Pist Seçimi, Kalkış/İniş Yönü ve Zorunlu Giriş Taksi Yolu Yönetimi">
+        <span class="rwy-icon">🛫</span>
+        <span class="rwy-text">PİST & YÖN:</span>
+        <span id="headerRunwaySummary" class="rwy-summary">Yükleniyor...</span>
+      </button>
+
       <!-- Status Indicator -->
       <div class="status-badge">
         <span class="status-dot"></span>
@@ -327,6 +334,106 @@
 
   </main>
 
+  <!-- Runway & Direction ATC Configuration Modal -->
+  <div id="runwayModal" class="modal-overlay hidden">
+    <div class="modal-card modal-runway-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-badge">ATC GROUND CONTROL</span>
+          <h3 class="modal-title">Pist & Operasyon Yönü Yönetimi</h3>
+          <p class="modal-subtitle">Aktif kalkış/iniş pisti, zorunlu giriş taksi yolu ve esnek çıkış noktaları</p>
+        </div>
+        <button id="btnCloseRunwayModal" class="btn-close-modal" title="Kapat">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Quick Preset Selection -->
+        <div class="modal-section">
+          <div class="section-label">HIZLI OPERASYON YÖNÜ ŞABLONLARI:</div>
+          <div id="runwayPresetButtons" class="preset-buttons-grid">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <div class="rwy-config-grid">
+          <!-- Landing Runway & Direction Column -->
+          <div class="rwy-config-col arr-col">
+            <div class="col-header arr">
+              <span class="col-icon">🛬</span>
+              <div>
+                <span class="col-title">İNİŞ PİSTİ & YÖNÜ (ARRIVALS)</span>
+                <span class="col-desc">Piste inen uçakların iniş yönü</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="selectArrRunway">Aktif İniş Pisti:</label>
+              <select id="selectArrRunway" class="form-control form-control-rwy">
+                <!-- Dynamically populated -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <div class="exit-actions-bar">
+                <label class="form-label" style="margin-bottom: 0;">Pist Çıkışları (İstenilen Noktadan Çıkış):</label>
+                <button type="button" id="btnSelectAllExits" class="btn-link">Tümüne İzin Ver</button>
+              </div>
+              <p class="field-help-text" style="margin-bottom: 8px;">
+                İniş yapan uçaklar pist koşusunun ardından aşağıdaki uygun/boş taksi yollarından istenilen noktadan serbestçe çıkış yapabilir:
+              </p>
+              <div id="runwayExitsContainer" class="checkbox-list-container">
+                <!-- Dynamically populated checkboxes -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Departure Runway & Direction Column -->
+          <div class="rwy-config-col dep-col">
+            <div class="col-header dep">
+              <span class="col-icon">🛫</span>
+              <div>
+                <span class="col-title">KALKIŞ PİSTİ & YÖNÜ (DEPARTURES)</span>
+                <span class="col-desc">Pistten havalanan uçakların yönü</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="selectDepRunway">Aktif Kalkış Pisti:</label>
+              <select id="selectDepRunway" class="form-control form-control-rwy">
+                <!-- Dynamically populated -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="selectMandatoryEntry">
+                Zorunlu Pist Giriş Taksi Yolu:
+                <span class="badge-mandatory">ZORUNLU KURAL</span>
+              </label>
+              <select id="selectMandatoryEntry" class="form-control form-control-mandatory">
+                <!-- Dynamically populated based on chosen departure runway -->
+              </select>
+              <div class="field-help-box">
+                <span class="help-icon">⛔</span>
+                <span>Kalkış yapacak tüm uçaklar standlarından piste ilerlerken <b>yalnızca burada belirlenen taksi yolundan</b> piste giriş yapacaktır. Başka bir yoldan piste giriş yapılamaz.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Current Operation Summary Banner -->
+        <div id="runwayConfigSummaryBanner" class="rwy-summary-banner">
+          <span class="banner-icon">ℹ️</span>
+          <span id="runwayConfigSummaryText">Yükleniyor...</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btnCancelRunwayModal" class="btn">Kapat</button>
+        <button id="btnApplyRunwayConfig" class="btn btn-primary">⚡ Uygula & Trafiğe Yansıt</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification -->
   <div id="toast" class="toast">Bildirim</div>
 
@@ -334,6 +441,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <!-- App JS Files -->
   <script src="js/overpass.js"></script>
+  <script src="js/runway-config.js"></script>
   <script src="js/taxiway-router.js"></script>
   <script src="js/aircraft-marker.js"></script>
   <script src="js/traffic-simulator.js"></script>

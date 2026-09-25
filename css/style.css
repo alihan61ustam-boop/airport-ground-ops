@@ -1364,6 +1364,10 @@ body {
   .timeline-speed-selector {
     display: none;
   }
+
+  .btn-runway-config .rwy-text {
+    display: none;
+  }
 }
 
 /* 4. Landscape Mobile / Short Heights (< 600px height) */
@@ -1382,6 +1386,548 @@ body {
     padding: 6px 10px;
     gap: 4px;
     bottom: 6px;
+  }
+}
+
+/* ==========================================================================
+   RUNWAY OPERATIONS & DIRECTION CONFIGURATION (ATC CONTROL)
+   ========================================================================== */
+
+/* Header ATC Runway Button */
+.btn-runway-config {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  color: var(--text-main);
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-runway-config:hover {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.25);
+}
+
+.btn-runway-config .rwy-icon {
+  font-size: 13px;
+  color: var(--accent-cyan);
+}
+
+.btn-runway-config .rwy-text {
+  color: var(--text-muted);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.btn-runway-config .rwy-summary {
+  font-family: var(--font-mono);
+  color: #38bdf8;
+  font-weight: 700;
+  background: rgba(14, 165, 233, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+/* Modal Overlay & Card */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(2, 6, 23, 0.78);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+.modal-overlay.hidden {
+  display: none !important;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.modal-card {
+  background: #0f172a;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 780px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7), 0 0 20px rgba(14, 165, 233, 0.15);
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.8);
+  background: #1e293b;
+}
+
+.modal-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.12);
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  border: 1px solid rgba(0, 229, 255, 0.25);
+}
+
+.modal-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: #f8fafc;
+  margin: 0;
+}
+
+.modal-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 4px 0 0 0;
+}
+
+.btn-close-modal {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 0.15s ease;
+}
+
+.btn-close-modal:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.modal-body {
+  padding: 18px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Preset Buttons Grid */
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.preset-buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.btn-preset {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(71, 85, 105, 0.6);
+  border-radius: 8px;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.btn-preset:hover {
+  background: rgba(51, 65, 85, 0.8);
+  border-color: #38bdf8;
+}
+
+.btn-preset.active {
+  background: rgba(14, 165, 233, 0.18);
+  border-color: #00e5ff;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
+}
+
+.preset-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.preset-desc {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+/* 2-Column Runway Config Grid */
+.rwy-config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.rwy-config-col {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(51, 65, 85, 0.7);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rwy-config-col.arr-col {
+  border-top: 3px solid #38bdf8;
+}
+
+.rwy-config-col.dep-col {
+  border-top: 3px solid #f59e0b;
+}
+
+.col-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+}
+
+.col-icon {
+  font-size: 18px;
+}
+
+.col-title {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #f8fafc;
+}
+
+.col-desc {
+  display: block;
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.form-control-rwy {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  color: #38bdf8;
+}
+
+/* Mandatory Runway Entry Styling */
+.badge-mandatory {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.form-control-mandatory {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  border-color: #f59e0b;
+  color: #fef08a;
+  background-color: rgba(245, 158, 11, 0.08);
+}
+
+.form-control-mandatory:focus {
+  border-color: #eab308;
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.35);
+}
+
+.field-help-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 6px;
+  font-size: 10.5px;
+  color: #fca5a5;
+  line-height: 1.4;
+}
+
+.field-help-box .help-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* Runway Exits List */
+.exit-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #38bdf8;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.btn-link:hover {
+  color: #7dd3fc;
+}
+
+.checkbox-list-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 6px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  border-radius: 6px;
+}
+
+.exit-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(71, 85, 105, 0.5);
+  border-radius: 5px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: #e2e8f0;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.exit-checkbox-label:hover {
+  background: rgba(51, 65, 85, 0.9);
+  border-color: #38bdf8;
+}
+
+.exit-checkbox-label input[type="checkbox"] {
+  accent-color: #00e5ff;
+  cursor: pointer;
+}
+
+/* Operation Summary Banner */
+.rwy-summary-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(14, 165, 233, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 11.5px;
+  color: #e0f2fe;
+  line-height: 1.45;
+}
+
+.banner-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* Modal Footer */
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid rgba(51, 65, 85, 0.8);
+  background: #1e293b;
+}
+
+/* Map ATC Visual Markers */
+.atc-mandatory-entry-marker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(185, 28, 28, 0.95);
+  border: 2px solid #ef4444;
+  border-radius: 6px;
+  padding: 3px 7px;
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.7);
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.atc-mandatory-entry-marker .entry-pulse {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border: 2px solid #ef4444;
+  border-radius: 8px;
+  animation: atcPulse 1.8s infinite;
+  pointer-events: none;
+}
+
+@keyframes atcPulse {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(1.18); opacity: 0; }
+}
+
+.atc-mandatory-entry-marker .entry-icon {
+  font-size: 13px;
+}
+
+.atc-mandatory-entry-marker .entry-label {
+  display: flex;
+  flex-direction: column;
+}
+
+.atc-mandatory-entry-marker .entry-tag {
+  font-size: 7.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #fecaca;
+}
+
+.atc-mandatory-entry-marker .entry-name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+/* Exit Marker on Map */
+.atc-exit-marker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(16, 185, 129, 0.9);
+  border: 1.5px solid #34d399;
+  border-radius: 4px;
+  padding: 2px 5px;
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.atc-exit-marker .exit-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #ffffff;
+}
+
+/* Direction Badges on Map */
+.atc-rwy-dir-badge {
+  background: rgba(15, 23, 42, 0.92);
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.atc-rwy-dir-badge.arr {
+  color: #38bdf8;
+  border: 1.5px solid #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+}
+
+.atc-rwy-dir-badge.dep {
+  color: #f59e0b;
+  border: 1.5px solid #f59e0b;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+}
+
+/* Responsive adjustments for modal on mobile */
+@media (max-width: 768px) {
+  .btn-runway-config {
+    padding: 4px 7px;
+    font-size: 10px;
+  }
+
+  .btn-runway-config .rwy-summary {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .rwy-config-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .modal-card {
+    max-height: 95vh;
+  }
+
+  .modal-header {
+    padding: 12px 14px;
+  }
+
+  .modal-body {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .modal-footer {
+    padding: 10px 14px;
   }
 }
 

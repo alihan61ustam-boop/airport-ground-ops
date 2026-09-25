@@ -20,6 +20,7 @@ let taxiwayLayerGroup = null;
 let apronLayerGroup = null;
 let standLayerGroup = null;
 let taxiRouteHighlightLayerGroup = null; // Glowing blue taxi route
+let runwayOverlayLayerGroup = null; // ATC Runway indicators (Mandatory entry & exits)
 
 // Traffic simulator & selection state
 let trafficSim = null;
@@ -75,6 +76,7 @@ function initMap() {
   taxiwayLayerGroup = L.layerGroup().addTo(map);
   standLayerGroup = L.layerGroup().addTo(map);
   taxiRouteHighlightLayerGroup = L.layerGroup().addTo(map);
+  runwayOverlayLayerGroup = L.layerGroup().addTo(map);
 
   const baseMaps = {
     "Karanlık Radar (Dark Canvas)": darkCanvas,
@@ -87,7 +89,8 @@ function initMap() {
     "Taksi Yolları (Taxiways)": taxiwayLayerGroup,
     "Apron Alanları": apronLayerGroup,
     "Park Pozisyonları (Stands)": standLayerGroup,
-    "Rota Vurgusu (Blue Route)": taxiRouteHighlightLayerGroup
+    "Rota Vurgusu (Blue Route)": taxiRouteHighlightLayerGroup,
+    "Pist Giriş & Çıkışları (ATC)": runwayOverlayLayerGroup
   };
 
   L.control.layers(baseMaps, overlayMaps, { position: "topright" }).addTo(map);
@@ -102,6 +105,8 @@ function initMap() {
 }
 
 function setupUIEvents() {
+  setupRunwayConfigEvents();
+
   // Mobile / Tablet sidebar drawer toggling
   const btnToggle = document.getElementById("btnToggleSidebar");
   const btnClose = document.getElementById("btnCloseSidebar");
@@ -558,6 +563,10 @@ async function loadAirport(icao) {
   clearAircraftSelection();
   updateStatus("Veri yükleniyor...", "loading");
 
+  if (window.RunwayConfigManager) {
+    window.RunwayConfigManager.setAirport(icao);
+  }
+
   try {
     const result = await AirportDataService.loadAirportData(icao);
     rawAirportGeoJSON = result.data;
@@ -574,6 +583,12 @@ async function loadAirport(icao) {
 
     if (trafficSim) {
       trafficSim.setAirport(icao);
+    }
+
+    if (window.RunwayConfigManager) {
+      const cfg = window.RunwayConfigManager.getCurrentConfig(icao);
+      updateRunwayHeaderSummary(cfg);
+      renderRunwayATCIndicators(cfg);
     }
 
     const count = rawAirportGeoJSON.features?.length || 0;
@@ -647,8 +662,11 @@ function renderAirportFeatures(geojson) {
         runwayLayerGroup.addLayer(centerLine);
       }
 
-      layer.bindTooltip(`<b>PİST: ${props.ref || props.name || "Runway"}</b><br>Yüzey: ${props.surface || "Asfalt"}`, {
+      layer.bindTooltip(`<b>PİST: ${props.ref || props.name || "Runway"}</b><br>Yüzey: ${props.surface || "Asfalt"}<br><span style="color: #38bdf8;">👉 Pist & Yön Ayarı İçin Tıklayın</span>`, {
         sticky: true
+      });
+      layer.on("click", () => {
+        openRunwayModal(props.ref || props.name);
       });
       runwayLayerGroup.addLayer(layer);
       extendBounds(bounds, geom);
@@ -1137,3 +1155,391 @@ function showToast(msg) {
   toast.classList.add("show");
   setTimeout(() => toast.classList.remove("show"), 3000);
 }
+
+/* ==========================================================================
+   RUNWAY OPERATIONS & DIRECTION MANAGEMENT (ATC CONTROL)
+   ========================================================================== */
+
+function setupRunwayConfigEvents() {
+  const btnOpen = document.getElementById("btnRunwayModalOpen");
+  const btnClose = document.getElementById("btnCloseRunwayModal");
+  const btnCancel = document.getElementById("btnCancelRunwayModal");
+  const btnApply = document.getElementById("btnApplyRunwayConfig");
+  const modal = document.getElementById("runwayModal");
+  const selectArr = document.getElementById("selectArrRunway");
+  const selectDep = document.getElementById("selectDepRunway");
+  const selectEntry = document.getElementById("selectMandatoryEntry");
+  const btnSelectAll = document.getElementById("btnSelectAllExits");
+
+  if (btnOpen) btnOpen.addEventListener("click", () => openRunwayModal());
+  if (btnClose) btnClose.addEventListener("click", closeRunwayModal);
+  if (btnCancel) btnCancel.addEventListener("click", closeRunwayModal);
+
+  if (modal) {
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeRunwayModal();
+    });
+  }
+
+  // When departure runway changes, re-populate its mandatory entry options
+  if (selectDep) {
+    selectDep.addEventListener("change", () => {
+      const depRwy = selectDep.value;
+      populateMandatoryEntryDropdown(currentIcao, depRwy);
+      clearPresetHighlight();
+      updateModalSummaryPreview();
+    });
+  }
+
+  // When arrival runway changes, re-populate available exits checklist
+  if (selectArr) {
+    selectArr.addEventListener("change", () => {
+      const arrRwy = selectArr.value;
+      populateExitsChecklist(currentIcao, arrRwy);
+      clearPresetHighlight();
+      updateModalSummaryPreview();
+    });
+  }
+
+  if (selectEntry) {
+    selectEntry.addEventListener("change", () => {
+      clearPresetHighlight();
+      updateModalSummaryPreview();
+    });
+  }
+
+  if (btnSelectAll) {
+    btnSelectAll.addEventListener("click", () => {
+      document.querySelectorAll("#runwayExitsContainer input[type='checkbox']").forEach(cb => {
+        cb.checked = true;
+      });
+      clearPresetHighlight();
+      updateModalSummaryPreview();
+    });
+  }
+
+  if (btnApply) {
+    btnApply.addEventListener("click", applyRunwayConfigFromModal);
+  }
+
+  // Register listener with RunwayConfigManager
+  if (window.RunwayConfigManager) {
+    window.RunwayConfigManager.onConfigChanged((cfg) => {
+      updateRunwayHeaderSummary(cfg);
+      renderRunwayATCIndicators(cfg);
+    });
+  }
+}
+
+function clearPresetHighlight() {
+  document.querySelectorAll("#runwayPresetButtons .btn-preset").forEach(b => b.classList.remove("active"));
+}
+
+function openRunwayModal(preselectRunwayId = null) {
+  if (!window.RunwayConfigManager) return;
+  const cfg = window.RunwayConfigManager.getCurrentConfig(currentIcao);
+  const catalog = window.RunwayConfigManager.catalogs[currentIcao];
+  if (!catalog) return;
+
+  // Determine preselection if runway was clicked on map
+  let targetArr = cfg.arrRunway;
+  let targetDep = cfg.depRunway;
+
+  if (preselectRunwayId) {
+    const cleanRef = String(preselectRunwayId).replace(/[^0-9LRC]/gi, "");
+    for (const rwyKey of Object.keys(catalog.runways)) {
+      if (cleanRef.includes(rwyKey) || rwyKey.includes(cleanRef) || String(preselectRunwayId).includes(rwyKey)) {
+        if (cleanRef.startsWith("17") || cleanRef.startsWith("35") || cleanRef.startsWith("06R") || cleanRef.startsWith("24L")) {
+          targetDep = rwyKey;
+        } else {
+          targetArr = rwyKey;
+        }
+        break;
+      }
+    }
+  }
+
+  populatePresetButtons(currentIcao, cfg.preset);
+  populateRunwayDropdowns(currentIcao, targetArr, targetDep);
+  populateMandatoryEntryDropdown(currentIcao, targetDep, cfg.mandatoryDepEntry?.id);
+  populateExitsChecklist(currentIcao, targetArr, cfg.allowedExits.map(e => e.id));
+  updateModalSummaryPreview();
+
+  const modal = document.getElementById("runwayModal");
+  if (modal) modal.classList.remove("hidden");
+}
+
+function closeRunwayModal() {
+  const modal = document.getElementById("runwayModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function populatePresetButtons(icao, activePresetId = null) {
+  const container = document.getElementById("runwayPresetButtons");
+  if (!container || !window.RunwayConfigManager) return;
+
+  const presets = window.RunwayConfigManager.catalogs[icao]?.presets || {};
+  let html = "";
+
+  Object.values(presets).forEach(p => {
+    const isActive = (p.id === activePresetId);
+    html += `
+      <button type="button" class="btn-preset ${isActive ? 'active' : ''}" data-preset="${p.id}">
+        <span class="preset-title">${p.name}</span>
+        <span class="preset-desc">${p.description}</span>
+      </button>
+    `;
+  });
+
+  container.innerHTML = html;
+
+  container.querySelectorAll(".btn-preset").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const pId = btn.dataset.preset;
+      const presetObj = presets[pId];
+      if (!presetObj) return;
+
+      container.querySelectorAll(".btn-preset").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      // Apply preset values to UI dropdowns
+      const selectArr = document.getElementById("selectArrRunway");
+      const selectDep = document.getElementById("selectDepRunway");
+      if (selectArr) selectArr.value = presetObj.arrRunway;
+      if (selectDep) selectDep.value = presetObj.depRunway;
+
+      populateMandatoryEntryDropdown(icao, presetObj.depRunway, presetObj.mandatoryDepEntry);
+      populateExitsChecklist(icao, presetObj.arrRunway, presetObj.allowedExits);
+      updateModalSummaryPreview();
+    });
+  });
+}
+
+function populateRunwayDropdowns(icao, selectedArr, selectedDep) {
+  const catalog = window.RunwayConfigManager.catalogs[icao];
+  if (!catalog) return;
+
+  const selectArr = document.getElementById("selectArrRunway");
+  const selectDep = document.getElementById("selectDepRunway");
+
+  if (selectArr) {
+    let arrHtml = "";
+    Object.values(catalog.runways).forEach(rwy => {
+      const isSel = (rwy.id === selectedArr) ? "selected" : "";
+      arrHtml += `<option value="${rwy.id}" ${isSel}>${rwy.name} (${rwy.heading}° - İniş)</option>`;
+    });
+    selectArr.innerHTML = arrHtml;
+  }
+
+  if (selectDep) {
+    let depHtml = "";
+    Object.values(catalog.runways).forEach(rwy => {
+      const isSel = (rwy.id === selectedDep) ? "selected" : "";
+      depHtml += `<option value="${rwy.id}" ${isSel}>${rwy.name} (${rwy.heading}° - Kalkış)</option>`;
+    });
+    selectDep.innerHTML = depHtml;
+  }
+}
+
+function populateMandatoryEntryDropdown(icao, depRwyId, selectedEntryId = null) {
+  const catalog = window.RunwayConfigManager.catalogs[icao];
+  const select = document.getElementById("selectMandatoryEntry");
+  if (!catalog || !select) return;
+
+  const rwy = catalog.runways[depRwyId];
+  if (!rwy || !rwy.entries) return;
+
+  let html = "";
+  rwy.entries.forEach((entry, idx) => {
+    const isSel = (entry.id === selectedEntryId || (!selectedEntryId && idx === 0)) ? "selected" : "";
+    html += `<option value="${entry.id}" ${isSel}>TWY ${entry.name} - ${entry.desc}</option>`;
+  });
+  select.innerHTML = html;
+}
+
+function populateExitsChecklist(icao, arrRwyId, selectedExitIds = []) {
+  const catalog = window.RunwayConfigManager.catalogs[icao];
+  const container = document.getElementById("runwayExitsContainer");
+  if (!catalog || !container) return;
+
+  const rwy = catalog.runways[arrRwyId];
+  if (!rwy || !rwy.exits) return;
+
+  let html = "";
+  rwy.exits.forEach(exit => {
+    const isChecked = (selectedExitIds.length === 0 || selectedExitIds.includes(exit.id)) ? "checked" : "";
+    html += `
+      <label class="exit-checkbox-label">
+        <input type="checkbox" value="${exit.id}" ${isChecked}>
+        <span><b>${exit.name}</b> <small style="color: var(--text-muted);">(${exit.desc || 'Çıkış'})</small></span>
+      </label>
+    `;
+  });
+
+  container.innerHTML = html;
+
+  container.querySelectorAll("input[type='checkbox']").forEach(cb => {
+    cb.addEventListener("change", () => {
+      clearPresetHighlight();
+      updateModalSummaryPreview();
+    });
+  });
+}
+
+function updateModalSummaryPreview() {
+  const bannerText = document.getElementById("runwayConfigSummaryText");
+  const selectArr = document.getElementById("selectArrRunway");
+  const selectDep = document.getElementById("selectDepRunway");
+  const selectEntry = document.getElementById("selectMandatoryEntry");
+  if (!bannerText || !selectArr || !selectDep) return;
+
+  const arrVal = selectArr.options[selectArr.selectedIndex]?.text || selectArr.value;
+  const depVal = selectDep.options[selectDep.selectedIndex]?.text || selectDep.value;
+  const entryVal = selectEntry?.options[selectEntry.selectedIndex]?.text || selectEntry?.value || "";
+
+  const checkedCount = document.querySelectorAll("#runwayExitsContainer input:checked").length;
+  const totalCount = document.querySelectorAll("#runwayExitsContainer input").length;
+
+  bannerText.innerHTML = `
+    <b>İniş:</b> ${arrVal} (Kullanılabilir Çıkış: ${checkedCount}/${totalCount}) &nbsp;|&nbsp; 
+    <b>Kalkış:</b> ${depVal} &nbsp;|&nbsp; 
+    <b style="color: #fca5a5;">Zorunlu Giriş Taksi Yolu:</b> <span style="color: #fef08a; font-family: var(--font-mono); font-weight: bold;">${entryVal}</span>
+  `;
+}
+
+function applyRunwayConfigFromModal() {
+  if (!window.RunwayConfigManager) return;
+
+  const selectArr = document.getElementById("selectArrRunway");
+  const selectDep = document.getElementById("selectDepRunway");
+  const selectEntry = document.getElementById("selectMandatoryEntry");
+
+  const arrRunway = selectArr ? selectArr.value : null;
+  const depRunway = selectDep ? selectDep.value : null;
+  const mandatoryDepEntry = selectEntry ? selectEntry.value : null;
+
+  const checkedBoxes = Array.from(document.querySelectorAll("#runwayExitsContainer input:checked"));
+  let allowedExits = checkedBoxes.map(cb => cb.value);
+
+  if (allowedExits.length === 0) {
+    allowedExits = Array.from(document.querySelectorAll("#runwayExitsContainer input")).map(cb => cb.value);
+  }
+
+  // Update configuration in RunwayConfigManager
+  window.RunwayConfigManager.updateCustomConfig(currentIcao, {
+    arrRunway,
+    depRunway,
+    mandatoryDepEntry,
+    allowedExits,
+    exitMode: "flexible"
+  });
+
+  // Rebuild simulation trajectories immediately with zero disruption
+  if (trafficSim) {
+    trafficSim.rebuildFlightTrajectories();
+  }
+
+  closeRunwayModal();
+
+  const cfg = window.RunwayConfigManager.getCurrentConfig(currentIcao);
+  showToast(`Pist Operasyonu Güncellendi: ${cfg.arrRunway} İniş / ${cfg.depRunway} Kalkış (Zorunlu Giriş: ${cfg.mandatoryDepEntry.name})`);
+}
+
+function updateRunwayHeaderSummary(cfg) {
+  const el = document.getElementById("headerRunwaySummary");
+  if (!el || !cfg) return;
+  el.textContent = `${cfg.arrRunway} İniş / ${cfg.depRunway} Kalkış (${cfg.mandatoryDepEntry?.name || 'Full'})`;
+}
+
+function renderRunwayATCIndicators(cfg) {
+  if (!runwayOverlayLayerGroup || !cfg) return;
+  runwayOverlayLayerGroup.clearLayers();
+
+  // 1. Mandatory Departure Entry Marker (Outbound planes MUST strictly enter here)
+  const mandatoryEntry = cfg.mandatoryDepEntry;
+  if (mandatoryEntry && mandatoryEntry.holdPos) {
+    const entryHtml = `
+      <div class="atc-mandatory-entry-marker">
+        <div class="entry-pulse"></div>
+        <div class="entry-icon">⛔</div>
+        <div class="entry-label">
+          <span class="entry-tag">ZORUNLU GİRİŞ</span>
+          <span class="entry-name">TWY ${mandatoryEntry.name}</span>
+        </div>
+      </div>
+    `;
+    const entryIcon = L.divIcon({
+      html: entryHtml,
+      className: "atc-entry-icon-wrap",
+      iconSize: [120, 36],
+      iconAnchor: [60, 18]
+    });
+    const entryMarker = L.marker(mandatoryEntry.holdPos, { icon: entryIcon, zIndexOffset: 2000 })
+      .bindTooltip(`<b>Zorunlu Kalkış Girişi: TWY ${mandatoryEntry.name}</b><br>${cfg.depRunwayData.name} pistine kalkışlar YALNIZCA bu taksi yolundan girebilir.<br><span style="color:#38bdf8;">👉 Değiştirmek İçin Tıklayın</span>`, { direction: "top", offset: [0, -15] })
+      .on("click", () => openRunwayModal());
+    runwayOverlayLayerGroup.addLayer(entryMarker);
+  }
+
+  // 2. Active Runway Exits (Inbound planes can exit from ANY allowed point)
+  if (cfg.allowedExits && cfg.allowedExits.length > 0) {
+    cfg.allowedExits.forEach(exit => {
+      const exitHtml = `
+        <div class="atc-exit-marker">
+          <span class="exit-dot"></span>
+          <span class="exit-name">${exit.name}</span>
+        </div>
+      `;
+      const exitIcon = L.divIcon({
+        html: exitHtml,
+        className: "atc-exit-icon-wrap",
+        iconSize: [60, 24],
+        iconAnchor: [30, 12]
+      });
+      const exitMarker = L.marker(exit.pos, { icon: exitIcon, zIndexOffset: 1500 })
+        .bindTooltip(`<b>İniş Çıkış Noktası: ${exit.name}</b><br>${exit.desc || 'Pist Çıkışı'}<br><i>İstenilen noktadan çıkış serbesttir</i><br><span style="color:#38bdf8;">👉 Ayarlamak İçin Tıklayın</span>`, { direction: "top", offset: [0, -10] })
+        .on("click", () => openRunwayModal());
+      runwayOverlayLayerGroup.addLayer(exitMarker);
+    });
+  }
+
+  // 3. Active Runway Direction Badges
+  if (cfg.arrRunwayData && cfg.arrRunwayData.touchdown) {
+    const arrHtml = `
+      <div class="atc-rwy-dir-badge arr">
+        🛬 İNİŞ: ${cfg.arrRunwayData.id} (${cfg.arrRunwayData.heading}°)
+      </div>
+    `;
+    const arrIcon = L.divIcon({
+      html: arrHtml,
+      className: "atc-rwy-badge-wrap",
+      iconSize: [120, 26],
+      iconAnchor: [60, 13]
+    });
+    const arrMarker = L.marker(cfg.arrRunwayData.touchdown, { icon: arrIcon, zIndexOffset: 1200 })
+      .bindTooltip(`<b>Aktif İniş Pisti: ${cfg.arrRunwayData.id}</b><br>Baş Açısı: ${cfg.arrRunwayData.heading}°<br><span style="color:#38bdf8;">👉 Değiştirmek İçin Tıklayın</span>`, { direction: "top" })
+      .on("click", () => openRunwayModal());
+    runwayOverlayLayerGroup.addLayer(arrMarker);
+  }
+
+  if (cfg.depRunwayData && cfg.depRunwayData.threshold) {
+    const depHtml = `
+      <div class="atc-rwy-dir-badge dep">
+        🛫 KALKIŞ: ${cfg.depRunwayData.id} (${cfg.depRunwayData.heading}°)
+      </div>
+    `;
+    const depIcon = L.divIcon({
+      html: depHtml,
+      className: "atc-rwy-badge-wrap",
+      iconSize: [120, 26],
+      iconAnchor: [60, 13]
+    });
+    const depMarker = L.marker(cfg.depRunwayData.threshold, { icon: depIcon, zIndexOffset: 1200 })
+      .bindTooltip(`<b>Aktif Kalkış Pisti: ${cfg.depRunwayData.id}</b><br>Baş Açısı: ${cfg.depRunwayData.heading}°<br>Zorunlu Giriş: TWY ${cfg.mandatoryDepEntry?.name}<br><span style="color:#38bdf8;">👉 Değiştirmek İçin Tıklayın</span>`, { direction: "top" })
+      .on("click", () => openRunwayModal());
+    runwayOverlayLayerGroup.addLayer(depMarker);
+  }
+}
+
+window.openRunwayModal = openRunwayModal;
+window.closeRunwayModal = closeRunwayModal;
+
