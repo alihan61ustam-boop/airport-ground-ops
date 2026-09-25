@@ -21,6 +21,13 @@ class GroundTrafficSimulator {
     this.animationTimer = null;
     this.lastRealTimestamp = performance.now();
 
+    // Mobile & Safari WebKit performance detection
+    this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                    (window.innerWidth <= 850) || 
+                    (navigator.maxTouchPoints > 1);
+    this.lastRenderTimestamp = 0;
+    this.minFrameDelta = this.isMobile ? 32 : 16; // 30 FPS target on mobile, 60 FPS on desktop
+
     // High performance timers & caches
     this.activeFlightsCache = [];
     this.lastActiveFilterSimSec = -999;
@@ -303,8 +310,16 @@ class GroundTrafficSimulator {
     const dtSeconds = (now - this.lastRealTimestamp) / 1000;
     this.lastRealTimestamp = now;
 
+    // Advance simulation time smoothly
     this.simSeconds = (this.simSeconds + dtSeconds * this.speedMultiplier) % 86400;
-    this.updateSimulation(dtSeconds, false);
+
+    // Frame pacing: On mobile/Safari, throttle DOM updates to ~30 FPS to avoid WebKit queue lag
+    const elapsedSinceRender = now - this.lastRenderTimestamp;
+    if (elapsedSinceRender >= this.minFrameDelta) {
+      this.lastRenderTimestamp = now;
+      this.updateSimulation(dtSeconds, false);
+    }
+
     this.animationTimer = requestAnimationFrame(() => this.loop());
   }
 
@@ -414,7 +429,8 @@ class GroundTrafficSimulator {
     // 4. Viewport/Frustum query for GPU culling
     let viewBounds = null;
     if (window.map) {
-      viewBounds = window.map.getBounds().pad(0.18);
+      const padAmount = this.isMobile ? 0.05 : 0.18;
+      viewBounds = window.map.getBounds().pad(padAmount);
     }
 
     // 5. Update marker positions and count phases

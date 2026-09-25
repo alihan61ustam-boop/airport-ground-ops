@@ -40,6 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function initMap() {
   map = L.map("map", {
     zoomControl: false,
+    preferCanvas: true,
     minZoom: 11,
     maxZoom: 20
   }).setView([40.8986, 29.3092], 15);
@@ -598,6 +599,7 @@ function renderAirportFeatures(geojson) {
   standsMap.clear();
 
   let bounds = L.latLngBounds();
+  const canvasRenderer = L.canvas({ padding: 0.5 });
 
   geojson.features.forEach(feature => {
     const props = feature.properties || {};
@@ -607,6 +609,7 @@ function renderAirportFeatures(geojson) {
     // 1. Apron Polygons
     if (aeroway === "apron") {
       const layer = L.geoJSON(feature, {
+        renderer: canvasRenderer,
         style: {
           color: "#475569",
           weight: 1,
@@ -621,6 +624,7 @@ function renderAirportFeatures(geojson) {
     else if (aeroway === "runway") {
       const isPolygon = geom.type === "Polygon";
       const layer = L.geoJSON(feature, {
+        renderer: canvasRenderer,
         style: {
           color: "#0f172a",
           weight: isPolygon ? 2 : 20,
@@ -632,6 +636,7 @@ function renderAirportFeatures(geojson) {
 
       if (!isPolygon) {
         const centerLine = L.geoJSON(feature, {
+          renderer: canvasRenderer,
           style: {
             color: "#ffffff",
             weight: 2.5,
@@ -651,6 +656,7 @@ function renderAirportFeatures(geojson) {
     // 3. Taxiways (Taksi Yolları)
     else if (aeroway === "taxiway") {
       const layer = L.geoJSON(feature, {
+        renderer: canvasRenderer,
         style: {
           color: "#f59e0b",
           weight: 3.5,

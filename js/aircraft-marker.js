@@ -325,8 +325,14 @@ class AircraftMarkerManager {
       marker._wrapper.style.display = "flex";
     }
 
-    // Leaflet LatLng update
-    marker.setLatLng([flight.lat, flight.lon]);
+    // Leaflet LatLng update - only when aircraft actually moves
+    const dLat = Math.abs(flight.lat - (marker._lastLat || 0));
+    const dLon = Math.abs(flight.lon - (marker._lastLon || 0));
+    if (dLat > 0.000004 || dLon > 0.000004) {
+      marker.setLatLng([flight.lat, flight.lon]);
+      marker._lastLat = flight.lat;
+      marker._lastLon = flight.lon;
+    }
 
     // Cache DOM references once to avoid continuous DOM queries
     if (!marker._domCached) {
