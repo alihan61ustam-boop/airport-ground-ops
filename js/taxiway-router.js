@@ -256,15 +256,34 @@ class TaxiwayGraphRouter {
       mandatoryEntryName = "TWY A1";
     }
 
-    // Select exit flexibly among permitted exits to avoid bottlenecking (user requirement: "istenilen noktadan çıkış yapılabilsin")
-    const exitChoice = rwyExits[flightIndex % rwyExits.length];
+    // Select optimal exit that minimizes taxi distance & apron traffic congestion to the assigned stand
+    let exitChoice = rwyExits[0];
+    let bestExitScore = Infinity;
+
+    for (let e = 0; e < rwyExits.length; e++) {
+      const exitCandidate = rwyExits[e];
+      const directDist = this.calcDistance(exitCandidate.pos[0], exitCandidate.pos[1], standCoord[0], standCoord[1]);
+      const exitNodeId = this.findNearestNode(exitCandidate.pos[0], exitCandidate.pos[1]).id;
+      const neighbors = this.adj.get(exitNodeId) || [];
+      let exitCongestion = 0;
+      for (const edge of neighbors) {
+        exitCongestion += (this.edgeUsageMap.get(edge.edgeKey) || 0);
+      }
+
+      // Balance physical proximity to gate with traffic congestion avoidance
+      const score = directDist + (exitCongestion * 220) + ((flightIndex % rwyExits.length === e) ? -35 : 0);
+      if (score < bestExitScore) {
+        bestExitScore = score;
+        exitChoice = exitCandidate;
+      }
+    }
 
     // 2. Run graph routing from chosen Runway Exit to Stand
-    const inboundRoute = this.findRoute(exitChoice.pos, standCoord, 0.4);
+    const inboundRoute = this.findRoute(exitChoice.pos, standCoord, 0.45);
 
     // 3. Run graph routing from Stand to Departure Runway STRICT Mandatory Entry Holding Point
     // Outbound taxi MUST strictly route to the chosen mandatory entry taxiway!
-    const outboundRoute = this.findRoute(standCoord, rwyTakeoffHold, 0.4);
+    const outboundRoute = this.findRoute(standCoord, rwyTakeoffHold, 0.45);
 
     const trajectory = [];
     let curTime = arrivalSec - 180;

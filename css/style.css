@@ -597,6 +597,205 @@ body {
   color: var(--text-muted);
 }
 
+/* ==========================================================================
+   FLIGHT SCHEDULE BOARD (UÇUŞ PROGRAMI LİSTESİ)
+   ========================================================================== */
+.flights-schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 20px;
+}
+
+.flight-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+
+.flight-card:hover {
+  border-color: var(--accent-cyan);
+  background-color: rgba(51, 65, 85, 0.6);
+  transform: translateY(-1px);
+}
+
+.flight-card.selected {
+  border-color: #00e5ff;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.25);
+  background: rgba(14, 165, 233, 0.12);
+}
+
+.flight-card.is-live {
+  border-left: 3.5px solid #10b981;
+}
+
+.flight-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flight-card-callsign-wrap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.flight-logo-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.flight-logo-icon svg {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+}
+
+.flight-card-callsign {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 13px;
+  color: #f8fafc;
+}
+
+.flight-card-airline {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.flight-card-phase {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+}
+
+.flight-card-phase.landing,
+.flight-card-phase.approaching {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.flight-card-phase.taxi_in,
+.flight-card-phase.taxi_out,
+.flight-card-phase.pushback {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.flight-card-phase.on_stand {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.flight-card-phase.holding,
+.flight-card-phase.queued {
+  color: #fb7185;
+  background: rgba(244, 63, 94, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.flight-card-phase.takeoff {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.flight-card-phase.scheduled {
+  color: #94a3b8;
+  background: rgba(51, 65, 85, 0.4);
+}
+
+.flight-card-route {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15, 23, 42, 0.65);
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+.route-point {
+  display: flex;
+  flex-direction: column;
+}
+
+.route-point.right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.route-city {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.route-time {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--accent-cyan);
+}
+
+.route-arrow {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.flight-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding-top: 2px;
+}
+
+.flight-card-gate {
+  color: #cbd5e1;
+}
+
+.flight-card-gate b {
+  font-family: var(--font-mono);
+  color: var(--accent-cyan);
+  font-size: 12px;
+}
+
+.flight-card-ac {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: #94a3b8;
+}
+
+.flight-card-more {
+  text-align: center;
+  font-size: 11px;
+  color: #94a3b8;
+  padding: 10px;
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 6px;
+  border: 1px dashed rgba(71, 85, 105, 0.6);
+}
+
 /* Stand Editor Tab */
 .editor-card {
   background-color: var(--bg-surface);

@@ -148,6 +148,8 @@ function setupUIEvents() {
 
       if (btn.dataset.tab === "tab-stands") {
         renderStandsList(document.getElementById("standSearchInput")?.value || "");
+      } else if (btn.dataset.tab === "tab-flights") {
+        renderFlightsList();
       }
     });
   });
@@ -169,12 +171,29 @@ function setupUIEvents() {
     renderStandsList(e.target.value);
   });
 
-  // Stand filter chips
-  document.querySelectorAll(".chip").forEach(chip => {
+  // Stand filter chips (scoped to tab-stands)
+  document.querySelectorAll("#tab-stands .chip").forEach(chip => {
     chip.addEventListener("click", () => {
-      document.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+      document.querySelectorAll("#tab-stands .chip").forEach(c => c.classList.remove("active"));
       chip.classList.add("active");
-      renderStandsList(document.getElementById("standSearchInput").value);
+      renderStandsList(document.getElementById("standSearchInput")?.value || "");
+    });
+  });
+
+  // Flight search input filter
+  const flightSearchInput = document.getElementById("flightSearchInput");
+  if (flightSearchInput) {
+    flightSearchInput.addEventListener("input", (e) => {
+      renderFlightsList(e.target.value);
+    });
+  }
+
+  // Flight filter chips (scoped to tab-flights)
+  document.querySelectorAll("#tab-flights .flight-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("#tab-flights .flight-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      renderFlightsList(flightSearchInput?.value || "");
     });
   });
 
@@ -256,7 +275,7 @@ function setupHUDControls() {
 /**
  * Selects an aircraft, displays the glowing blue route and opens the live HUD
  */
-function selectAircraft(flightId) {
+function selectAircraft(flightId, autoJumpToTime = false) {
   if (!trafficSim) return;
   const flight = trafficSim.flights.find(f => f.id === flightId);
   if (!flight) return;
@@ -264,9 +283,18 @@ function selectAircraft(flightId) {
   selectedFlightId = flightId;
   window.selectedFlightId = flightId;
 
+  const isLive = trafficSim.simSeconds >= flight.startTime && trafficSim.simSeconds <= flight.endTime;
+
+  if (!isLive && autoJumpToTime) {
+    // Jump simulation time right to when this flight begins its operation
+    trafficSim.setTime(Math.max(0, flight.startTime + 15));
+    trafficSim.updateSimulation(0, true);
+    showToast(`${flight.callsign} için simülasyon saati ${flight.timeInFormatted || flight.eta}'e ayarlandı.`);
+  }
+
   // Open HUD Panel
   const hud = document.getElementById("aircraftHUD");
-  hud.classList.remove("hidden");
+  if (hud) hud.classList.remove("hidden");
 
   // Populate Header
   document.getElementById("hudCallsign").textContent = flight.callsign;
@@ -278,7 +306,7 @@ function selectAircraft(flightId) {
     hudAirlineEl.style.alignItems = "center";
     hudAirlineEl.style.gap = "6px";
   } else if (hudAirlineEl) {
-    hudAirlineEl.textContent = flight.airline;
+    hudAirlineEl.textContent = flight.airlineName || flight.airline;
   }
   document.getElementById("hudReg").textContent = `${flight.registration} (${flight.type})`;
   document.getElementById("hudDestStand").textContent = `Stand ${flight.standRef}`;
@@ -287,8 +315,23 @@ function selectAircraft(flightId) {
   // Draw Glowing Blue Route Polyline
   drawBlueTaxiRoute(flight);
 
-  // Bring marker to focus
-  map.panTo([flight.lat, flight.lon], { animate: true, duration: 0.5 });
+  // Bring marker or assigned stand to focus
+  if (flight.lat && flight.lon) {
+    map.panTo([flight.lat, flight.lon], { animate: true, duration: 0.5 });
+  } else if (flight.fullRoute && flight.fullRoute.length > 0) {
+    const pt = flight.fullRoute[0];
+    map.panTo([pt[0], pt[1]], { animate: true, duration: 0.5 });
+  } else {
+    const stand = Array.from(standsMap.values()).find(s => s.ref === flight.standRef);
+    if (stand) {
+      map.panTo([stand.lat, stand.lon], { animate: true, duration: 0.5 });
+    }
+  }
+
+  // Highlight active flight card if visible
+  document.querySelectorAll(".flight-card").forEach(c => {
+    c.classList.toggle("selected", c.dataset.flightId === flightId);
+  });
 }
 window.selectAircraft = selectAircraft;
 
@@ -551,6 +594,22 @@ function setupTimelineControls() {
         updateLiveHUD(activeFlight);
       }
     }
+
+    // Throttled Flight Schedule List and Filter Badges update (1.5s interval)
+    const now = performance.now();
+    if (now - lastFlightListUpdateTime > 1500) {
+      lastFlightListUpdateTime = now;
+      if (typeof updateFlightFilterBadges === "function") {
+        updateFlightFilterBadges();
+      }
+      const flightsTab = document.getElementById("tab-flights");
+      if (flightsTab && flightsTab.classList.contains("active")) {
+        const searchInput = document.getElementById("flightSearchInput");
+        if (document.activeElement !== searchInput && typeof renderFlightsList === "function") {
+          renderFlightsList(searchInput?.value || "", false);
+        }
+      }
+    }
   });
 }
 
@@ -583,6 +642,13 @@ async function loadAirport(icao) {
 
     if (trafficSim) {
       trafficSim.setAirport(icao);
+    }
+
+    if (typeof updateFlightFilterBadges === "function") {
+      updateFlightFilterBadges();
+    }
+    if (typeof renderFlightsList === "function") {
+      renderFlightsList();
     }
 
     if (window.RunwayConfigManager) {
@@ -689,12 +755,30 @@ function renderAirportFeatures(geojson) {
     }
     // 4. Parking Positions / Gates (Park Pozisyonları)
     else if (aeroway === "parking_position" || aeroway === "gate") {
+      let lat = null, lon = null;
       if (geom.type === "Point") {
-        const [lon, lat] = geom.coordinates;
+        lon = geom.coordinates[0];
+        lat = geom.coordinates[1];
+      } else if (geom.type === "Polygon" && geom.coordinates[0]?.length > 0) {
+        const ring = geom.coordinates[0];
+        let sumLat = 0, sumLon = 0;
+        for (let i = 0; i < ring.length; i++) {
+          sumLon += ring[i][0];
+          sumLat += ring[i][1];
+        }
+        lat = sumLat / ring.length;
+        lon = sumLon / ring.length;
+      }
+
+      if (lat !== null && lon !== null) {
         bounds.extend([lat, lon]);
 
-        const standId = `stand_${props.id || Math.random().toString(36).substr(2, 9)}`;
-        const standRef = props.ref || props.name || `#${props.id}`;
+        const standRef = props.ref || props.name || `#${props.id || Math.random().toString(36).substr(2, 6)}`;
+        // Deduplicate stands with identical ref
+        const standId = `stand_${standRef.replace(/[^a-zA-Z0-9]/g, "_")}`;
+        if (standsMap.has(standId)) {
+          return;
+        }
 
         const standObj = {
           id: standId,
@@ -1028,6 +1112,219 @@ function renderStandsList(filterText = "") {
   if (countOccupiedEl) countOccupiedEl.textContent = occupiedCount;
   if (countMaintEl) countMaintEl.textContent = maintenanceCount;
 }
+
+let lastFlightListUpdateTime = 0;
+
+/**
+ * Updates count indicators in the Flight Schedule tab and top badge
+ */
+function updateFlightFilterBadges() {
+  if (!trafficSim || !trafficSim.flights) return;
+  const flights = trafficSim.flights;
+  const curTime = trafficSim.simSeconds;
+
+  const total = flights.length;
+  let activeCount = 0;
+  let arrCount = 0;
+  let depCount = 0;
+  let standCount = 0;
+
+  for (let i = 0; i < total; i++) {
+    const f = flights[i];
+    const isLive = curTime >= f.startTime && curTime <= f.endTime;
+    if (isLive) {
+      activeCount++;
+      const p = f.phase || "taxi_in";
+      if (p === "on_stand") {
+        standCount++;
+      } else if (p === "approaching" || p === "landing" || p === "taxi_in") {
+        arrCount++;
+      } else {
+        depCount++;
+      }
+    }
+  }
+
+  const tabBadge = document.getElementById("flightCountTab");
+  if (tabBadge) tabBadge.textContent = total;
+
+  const bAll = document.getElementById("flightFilterAll");
+  const bActive = document.getElementById("flightFilterActive");
+  const bArr = document.getElementById("flightFilterArr");
+  const bDep = document.getElementById("flightFilterDep");
+  const bStand = document.getElementById("flightFilterStand");
+
+  if (bAll) bAll.textContent = total;
+  if (bActive) bActive.textContent = activeCount;
+  if (bArr) bArr.textContent = arrCount;
+  if (bDep) bDep.textContent = depCount;
+  if (bStand) bStand.textContent = standCount;
+}
+window.updateFlightFilterBadges = updateFlightFilterBadges;
+
+/**
+ * Helper to produce user-friendly flight phase label and CSS class
+ */
+function getFlightPhaseDisplay(flight, isLive) {
+  if (!isLive) {
+    if (trafficSim && trafficSim.simSeconds > flight.endTime) {
+      return { cssClass: "scheduled", label: "Tamamlandı" };
+    }
+    return { cssClass: "scheduled", label: "Planlandı" };
+  }
+  const p = flight.phase || "taxi_in";
+  switch (p) {
+    case "approaching": return { cssClass: "approaching", label: "Yaklaşmada" };
+    case "landing": return { cssClass: "landing", label: "İnişte" };
+    case "taxi_in": return { cssClass: "taxi_in", label: "Giriş Taksisi" };
+    case "on_stand": return { cssClass: "on_stand", label: "Parkta" };
+    case "pushback": return { cssClass: "pushback", label: "Pushback" };
+    case "taxi_out": return { cssClass: "taxi_out", label: "Kalkış Taksisi" };
+    case "holding": return { cssClass: "holding", label: "Pist Bekleme" };
+    case "queued": return { cssClass: "queued", label: "Taksi Sırası" };
+    case "takeoff": return { cssClass: "takeoff", label: "Kalkışta" };
+    default: return { cssClass: "taxi_in", label: "Taksi" };
+  }
+}
+
+/**
+ * Renders the entire flight schedule board with real-time tracking,
+ * filtering and search capabilities.
+ */
+function renderFlightsList(filterText = "", resetScroll = true) {
+  const container = document.getElementById("flightsList");
+  if (!container || !trafficSim || !trafficSim.flights) return;
+
+  const curTime = trafficSim.simSeconds;
+  const activeChip = document.querySelector("#tab-flights .flight-chip.active")?.dataset.flightFilter || "all";
+  const search = (filterText || document.getElementById("flightSearchInput")?.value || "").toLowerCase().trim();
+
+  updateFlightFilterBadges();
+
+  const prevScroll = container.scrollTop;
+
+  // Filter flights
+  const matching = [];
+  const allFlights = trafficSim.flights;
+
+  for (let i = 0; i < allFlights.length; i++) {
+    const f = allFlights[i];
+    const isLive = curTime >= f.startTime && curTime <= f.endTime;
+    const p = f.phase || "taxi_in";
+
+    // Filter chip criteria
+    if (activeChip === "active" && !isLive) continue;
+    if (activeChip === "arr") {
+      const isArr = isLive ? (p === "approaching" || p === "landing" || p === "taxi_in") : (curTime < f.startTime + 600);
+      if (!isArr) continue;
+    }
+    if (activeChip === "dep") {
+      const isDep = isLive ? (p === "pushback" || p === "taxi_out" || p === "holding" || p === "queued" || p === "takeoff") : (curTime >= f.startTime + 600);
+      if (!isDep) continue;
+    }
+    if (activeChip === "stand") {
+      const isOnStand = isLive && p === "on_stand";
+      if (!isOnStand) continue;
+    }
+
+    // Text search query
+    if (search) {
+      const matchCallsign = (f.callsign || "").toLowerCase().includes(search);
+      const matchCity = (f.city || "").toLowerCase().includes(search);
+      const matchDest = (f.destination || "").toLowerCase().includes(search);
+      const matchOrigin = (f.origin || "").toLowerCase().includes(search);
+      const matchStand = (f.standRef || "").toLowerCase().includes(search);
+      const matchType = (f.type || "").toLowerCase().includes(search);
+      const matchReg = (f.registration || "").toLowerCase().includes(search);
+      const matchAirline = (f.airlineName || "").toLowerCase().includes(search);
+
+      if (!matchCallsign && !matchCity && !matchDest && !matchOrigin && !matchStand && !matchType && !matchReg && !matchAirline) {
+        continue;
+      }
+    }
+
+    matching.push({ flight: f, isLive: isLive });
+  }
+
+  // Sort matching: currently active first, then chronological by startTime
+  matching.sort((a, b) => {
+    if (a.isLive && !b.isLive) return -1;
+    if (!a.isLive && b.isLive) return 1;
+    return a.flight.startTime - b.flight.startTime;
+  });
+
+  const MAX_RENDER = 120;
+  const toRender = matching.slice(0, MAX_RENDER);
+
+  const fragment = document.createDocumentFragment();
+
+  toRender.forEach(item => {
+    const f = item.flight;
+    const isLive = item.isLive;
+    const phaseInfo = getFlightPhaseDisplay(f, isLive);
+    const livery = window.AircraftMarkerManager?.getLivery(f.airline);
+
+    const card = document.createElement("div");
+    card.className = `flight-card ${isLive ? 'is-live' : ''} ${selectedFlightId === f.id ? 'selected' : ''}`;
+    card.dataset.flightId = f.id;
+
+    card.innerHTML = `
+      <div class="flight-card-header">
+        <div class="flight-card-callsign-wrap">
+          <div class="flight-logo-icon">${livery?.logoSvg || ''}</div>
+          <span class="flight-card-callsign">${f.callsign}</span>
+          <span class="flight-card-airline">${livery?.displayTag || f.airline}</span>
+        </div>
+        <span class="flight-card-phase ${phaseInfo.cssClass}">${phaseInfo.label}</span>
+      </div>
+
+      <div class="flight-card-route">
+        <div class="route-point">
+          <span class="route-city">${f.origin}</span>
+          <span class="route-time">ETA ${f.timeInFormatted || f.eta}</span>
+        </div>
+        <div class="route-arrow">➔</div>
+        <div class="route-point right">
+          <span class="route-city">${f.city || f.destination} (${f.destination})</span>
+          <span class="route-time">ETD ${f.timeOutFormatted || f.etd}</span>
+        </div>
+      </div>
+
+      <div class="flight-card-footer">
+        <span class="flight-card-gate">Atanan Park: <b>${f.standRef}</b></span>
+        <span class="flight-card-ac">${f.registration} • ${f.type}</span>
+      </div>
+    `;
+
+    card.addEventListener("click", () => {
+      document.querySelectorAll(".flight-card").forEach(c => c.classList.remove("selected"));
+      card.classList.add("selected");
+      selectAircraft(f.id, true);
+    });
+
+    fragment.appendChild(card);
+  });
+
+  if (matching.length > MAX_RENDER) {
+    const moreNotice = document.createElement("div");
+    moreNotice.className = "flight-card-more";
+    moreNotice.innerHTML = `+${matching.length - MAX_RENDER} adet daha uçuş var. Aramayı daraltarak diğer uçuşları filtreleyebilirsiniz.`;
+    fragment.appendChild(moreNotice);
+  } else if (matching.length === 0) {
+    const emptyNotice = document.createElement("div");
+    emptyNotice.className = "flight-card-more";
+    emptyNotice.innerHTML = `Eşleşen uçuş bulunamadı. Filtreleri veya arama kriterini değiştirin.`;
+    fragment.appendChild(emptyNotice);
+  }
+
+  container.innerHTML = "";
+  container.appendChild(fragment);
+
+  if (!resetScroll) {
+    container.scrollTop = prevScroll;
+  }
+}
+window.renderFlightsList = renderFlightsList;
 
 function updateStatistics() {
   const total = standsMap.size;

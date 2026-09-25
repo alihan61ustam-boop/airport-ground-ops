@@ -97,18 +97,32 @@ class GroundTrafficSimulator {
     const isLTFM = (this.airportIcao === "LTFM");
     const baseStands = this.getAirportStands();
 
+    if (window.StandAllocationEngine) {
+      window.StandAllocationEngine.init(this.airportIcao, baseStands);
+    }
+
     this.flights.forEach((f, idx) => {
-      let standObj = baseStands.find(s => s.ref === f.standRef);
-      if (!standObj) {
-        const midPt = f.fullRoute ? f.fullRoute[Math.floor(f.fullRoute.length / 2)] : null;
-        standObj = {
-          ref: f.standRef,
-          lat: midPt ? midPt[0] : (isLTFM ? 41.265 : 40.90),
-          lon: midPt ? midPt[1] : (isLTFM ? 28.74 : 29.31)
-        };
-      }
       const arrivalSec = f.startTime + 180;
-      const groundTimeSec = Math.max(30 * 60, (f.endTime - 130) - arrivalSec);
+      const groundTimeSec = Math.max(35 * 60, (f.endTime - 130) - arrivalSec);
+      const departureSec = arrivalSec + groundTimeSec;
+
+      let standObj = null;
+      if (window.StandAllocationEngine) {
+        standObj = window.StandAllocationEngine.allocateStand(f, arrivalSec, departureSec, f.standRef);
+      }
+      if (!standObj) {
+        standObj = baseStands.find(s => s.ref === f.standRef);
+        if (!standObj) {
+          const midPt = f.fullRoute ? f.fullRoute[Math.floor(f.fullRoute.length / 2)] : null;
+          standObj = {
+            ref: f.standRef,
+            lat: midPt ? midPt[0] : (isLTFM ? 41.265 : 40.90),
+            lon: midPt ? midPt[1] : (isLTFM ? 28.74 : 29.31)
+          };
+        }
+      }
+
+      f.standRef = standObj.ref;
 
       const routeData = window.TaxiwayGraphRouter.generateAutonomousFlightTrajectory(
         isLTFM,
@@ -143,6 +157,10 @@ class GroundTrafficSimulator {
    * Primary carriers: Pegasus (PC/PGT), AJet (VF/AJT), THY (TK/THY), Flydubai (FZ/FDB), Air Arabia (G9/ABY)
    */
   generateLTFJSchedule(availableStands) {
+    if (window.StandAllocationEngine) {
+      window.StandAllocationEngine.init("LTFJ", availableStands);
+    }
+
     const airlines = [
       { code: "PC", prefix: "PGT", name: "Pegasus Airlines", weight: 0.65 },
       { code: "VF", prefix: "AJT", name: "AJet", weight: 0.22 },
@@ -165,11 +183,11 @@ class GroundTrafficSimulator {
 
     for (let hour = 0; hour < 24; hour++) {
       let flightsThisHour = 8;
-      if (hour >= 6 && hour <= 9) flightsThisHour = 32;
-      else if (hour > 9 && hour <= 14) flightsThisHour = 28;
-      else if (hour > 14 && hour <= 17) flightsThisHour = 26;
-      else if (hour > 17 && hour <= 22) flightsThisHour = 30;
-      else if (hour > 22 || hour < 6) flightsThisHour = 12;
+      if (hour >= 6 && hour <= 9) flightsThisHour = 30;
+      else if (hour > 9 && hour <= 14) flightsThisHour = 26;
+      else if (hour > 14 && hour <= 17) flightsThisHour = 24;
+      else if (hour > 17 && hour <= 22) flightsThisHour = 28;
+      else if (hour > 22 || hour < 6) flightsThisHour = 10;
 
       for (let i = 0; i < flightsThisHour; i++) {
         const rand = Math.random();
@@ -188,15 +206,27 @@ class GroundTrafficSimulator {
         const acType = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
         const route = routes[Math.floor(Math.random() * routes.length)];
 
-        const standIndex = (flightCounter * 7) % (availableStands.length || 1);
-        const standObj = availableStands.length > 0
-          ? availableStands[standIndex]
-          : { ref: `20${(flightCounter % 9) + 1}A`, lat: 40.9067, lon: 29.3157 };
-
         const baseMinute = Math.floor((i / flightsThisHour) * 60) + Math.floor(Math.random() * 3);
         const arrivalSec = hour * 3600 + baseMinute * 60;
-        const groundTimeSec = 45 * 60;
+        const groundTimeSec = (38 + (flightCounter % 15)) * 60; // 38-53 min turnaround
         const departureSec = arrivalSec + groundTimeSec;
+
+        // Intelligent stand allocation with zero overlap and pier congestion balancing
+        const flightMeta = {
+          id: `FLT_${flightCounter}`,
+          airline: airline.prefix,
+          type: acType,
+          destination: route.dest
+        };
+
+        let standObj = null;
+        if (window.StandAllocationEngine) {
+          standObj = window.StandAllocationEngine.allocateStand(flightMeta, arrivalSec, departureSec);
+        }
+        if (!standObj) {
+          const sIdx = (flightCounter * 7) % (availableStands.length || 1);
+          standObj = availableStands.length > 0 ? availableStands[sIdx] : { ref: "204", lat: 40.9067, lon: 29.3157 };
+        }
 
         const routeData = window.TaxiwayGraphRouter.generateAutonomousFlightTrajectory(
           false,
@@ -208,14 +238,18 @@ class GroundTrafficSimulator {
         );
 
         this.flights.push({
-          id: `FLT_${flightCounter}`,
+          id: flightMeta.id,
           callsign: flightNum,
           airline: airline.prefix,
+          airlineName: airline.name,
           registration: tailReg,
           type: acType,
           origin: route.dest,
           destination: route.dest,
+          city: route.city,
           standRef: standObj.ref,
+          eta: this.formatTime(arrivalSec + 250),
+          etd: this.formatTime(departureSec - 270),
           timeInFormatted: this.formatTime(arrivalSec + 250),
           timeOutFormatted: this.formatTime(departureSec - 270),
           startTime: arrivalSec - 180,
@@ -230,6 +264,7 @@ class GroundTrafficSimulator {
         flightCounter++;
       }
     }
+    console.log(`[TrafficSimulator] Generated LTFJ schedule: ${this.flights.length} conflict-free flights.`);
   }
 
   /**
@@ -237,6 +272,10 @@ class GroundTrafficSimulator {
    * Primary carriers: Turkish Airlines (TK/THY), AJet (VF/AJT), Lufthansa (LH/DLH), Emirates (EK/UAE), Qatar (QR/QTR), British Airways (BA/BAW), SunExpress (XQ/SXS)
    */
   generateLTFMSchedule(availableStands) {
+    if (window.StandAllocationEngine) {
+      window.StandAllocationEngine.init("LTFM", availableStands);
+    }
+
     const airlines = [
       { code: "TK", prefix: "THY", name: "Türk Hava Yolları", weight: 0.74 },
       { code: "VF", prefix: "AJT", name: "AJet", weight: 0.10 },
@@ -249,10 +288,14 @@ class GroundTrafficSimulator {
     ];
 
     const routes = [
-      "JFK - New York", "LHR - Londra", "CDG - Paris", "FRA - Frankfurt",
-      "DXB - Dubai", "NRT - Tokyo", "SIN - Singapur", "ORD - Chicago",
-      "MIA - Miami", "ESB - Ankara", "AYT - Antalya", "ADB - İzmir",
-      "DOH - Doha", "MUC - Münih", "FCO - Roma", "AMS - Amsterdam"
+      { dest: "JFK", city: "New York" }, { dest: "LHR", city: "Londra" },
+      { dest: "CDG", city: "Paris" }, { dest: "FRA", city: "Frankfurt" },
+      { dest: "DXB", city: "Dubai" }, { dest: "NRT", city: "Tokyo" },
+      { dest: "SIN", city: "Singapur" }, { dest: "ORD", city: "Chicago" },
+      { dest: "MIA", city: "Miami" }, { dest: "ESB", city: "Ankara" },
+      { dest: "AYT", city: "Antalya" }, { dest: "ADB", city: "İzmir" },
+      { dest: "DOH", city: "Doha" }, { dest: "MUC", city: "Münih" },
+      { dest: "FCO", city: "Roma" }, { dest: "AMS", city: "Amsterdam" }
     ];
 
     const aircraftTypes = ["B777-300ER", "A350-900", "A330-300", "B787-9", "A321neo"];
@@ -260,10 +303,10 @@ class GroundTrafficSimulator {
 
     for (let hour = 0; hour < 24; hour++) {
       let flightsThisHour = 16;
-      if (hour >= 6 && hour <= 9) flightsThisHour = 58;
-      else if (hour > 9 && hour <= 15) flightsThisHour = 52;
-      else if (hour > 15 && hour <= 22) flightsThisHour = 56;
-      else if (hour > 22 || hour < 6) flightsThisHour = 20;
+      if (hour >= 6 && hour <= 9) flightsThisHour = 50;
+      else if (hour > 9 && hour <= 15) flightsThisHour = 45;
+      else if (hour > 15 && hour <= 22) flightsThisHour = 48;
+      else if (hour > 22 || hour < 6) flightsThisHour = 18;
 
       for (let i = 0; i < flightsThisHour; i++) {
         const rand = Math.random();
@@ -280,22 +323,35 @@ class GroundTrafficSimulator {
         const flightNum = `${airline.code} ${1000 + (flightCounter % 1899)}`;
         const tailReg = `TC-L${String.fromCharCode(65 + (flightCounter % 26))}${String.fromCharCode(65 + (flightCounter % 26))}`;
         const acType = aircraftTypes[Math.floor(Math.random() * aircraftTypes.length)];
-        const dest = routes[Math.floor(Math.random() * routes.length)];
+        const route = routes[Math.floor(Math.random() * routes.length)];
 
-        let standObj = null;
-        if (flightCounter % 10 === 0) {
-          standObj = availableStands.find(s => s.ref === "F13") || { ref: "F13", lat: 41.26647, lon: 28.74934 };
-        } else {
-          const standIndex = (flightCounter * 11) % (availableStands.length || 1);
-          standObj = availableStands.length > 0
-            ? availableStands[standIndex]
-            : { ref: `D${(flightCounter % 15) + 1}`, lat: 41.2650, lon: 28.7420 };
-        }
-
+        const isWidebody = ["B777-300ER", "A350-900", "A330-300", "B787-9"].includes(acType);
         const baseMinute = Math.floor((i / flightsThisHour) * 60) + Math.floor(Math.random() * 2);
         const arrivalSec = hour * 3600 + baseMinute * 60;
-        const groundTimeSec = 55 * 60;
+        const groundTimeSec = (isWidebody ? 70 : 45) * 60 + ((flightCounter % 15) * 60);
         const departureSec = arrivalSec + groundTimeSec;
+
+        const flightMeta = {
+          id: `FLT_${flightCounter}`,
+          airline: airline.prefix,
+          type: acType,
+          destination: route.dest
+        };
+
+        // Intelligent stand allocation with zero overlap, widebody gate targeting, and pier balancing
+        let standObj = null;
+        if (window.StandAllocationEngine) {
+          standObj = window.StandAllocationEngine.allocateStand(
+            flightMeta,
+            arrivalSec,
+            departureSec,
+            (flightCounter % 14 === 0 ? "F13" : null)
+          );
+        }
+        if (!standObj) {
+          const sIdx = (flightCounter * 11) % (availableStands.length || 1);
+          standObj = availableStands.length > 0 ? availableStands[sIdx] : { ref: "F13", lat: 41.26647, lon: 28.74934 };
+        }
 
         const routeData = window.TaxiwayGraphRouter.generateAutonomousFlightTrajectory(
           true,
@@ -307,14 +363,18 @@ class GroundTrafficSimulator {
         );
 
         this.flights.push({
-          id: `FLT_${flightCounter}`,
+          id: flightMeta.id,
           callsign: flightNum,
           airline: airline.prefix,
+          airlineName: airline.name,
           registration: tailReg,
           type: acType,
-          origin: dest.split(" - ")[0],
-          destination: dest.split(" - ")[0],
+          origin: route.dest,
+          destination: route.dest,
+          city: route.city,
           standRef: standObj.ref,
+          eta: this.formatTime(arrivalSec + 370),
+          etd: this.formatTime(departureSec - 340),
           timeInFormatted: this.formatTime(arrivalSec + 370),
           timeOutFormatted: this.formatTime(departureSec - 340),
           startTime: arrivalSec - 180,
@@ -329,6 +389,7 @@ class GroundTrafficSimulator {
         flightCounter++;
       }
     }
+    console.log(`[TrafficSimulator] Generated LTFM schedule: ${this.flights.length} conflict-free flights.`);
   }
 
   start() {
