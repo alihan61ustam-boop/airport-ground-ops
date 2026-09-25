@@ -1,22 +1,22 @@
 :root {
-  --bg-primary: #0a0f1d;
-  --bg-secondary: #111827;
-  --bg-surface: #1e293b;
-  --bg-hover: #334155;
-  --border-color: #334155;
-  --border-highlight: #38bdf8;
+  --bg-primary: #061510;       /* Koyu Yeşil / Orman Yeşili Siyah */
+  --bg-secondary: #0c241b;     /* Zengin Çam / Koyu Yeşil */
+  --bg-surface: #123326;       /* Zümrüt Koyu Yeşil Kart/Panel Yüzeyi */
+  --bg-hover: #1b4534;         /* Canlı Koyu Yeşil Hover */
+  --border-color: #1e4d3a;     /* Koyu Yeşil Kenarlık */
+  --border-highlight: #10b981; /* Parlak Zümrüt Yeşili Vurgu */
   
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
+  --text-main: #f1f7f4;
+  --text-muted: #9ab4a6;
+  --text-dim: #6a8878;
   
-  --accent-cyan: #06b6d4;
-  --accent-neon-cyan: #00e5ff;
-  --accent-blue: #3b82f6;
+  --accent-cyan: #14b8a6;      /* Turkuaz Yeşili */
+  --accent-neon-cyan: #10e8aa; /* Parlak Neon Nane / Camgöbeği */
+  --accent-blue: #059669;      /* Zümrüt Yeşili */
   --accent-green: #10b981;
   --accent-amber: #f59e0b;
   --accent-red: #ef4444;
-  --accent-purple: #a855f7;
+  --accent-purple: #8b5cf6;
 
   --stand-free: #10b981;
   --stand-occupied: #f97316;
@@ -177,7 +177,7 @@ body {
 #map {
   flex: 1;
   height: 100%;
-  background: #060911;
+  background: #05100c;
 }
 
 /* ========================================================= */
@@ -188,12 +188,12 @@ body {
   top: 16px;
   left: 20px;
   width: 360px;
-  background: #0f172a;
-  border: 1px solid var(--accent-cyan);
+  background: #092218;
+  border: 1px solid var(--accent-green);
   border-radius: 12px;
   padding: 14px;
   z-index: 1000;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.8), 0 0 20px rgba(6, 182, 212, 0.2);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.8), 0 0 20px rgba(16, 185, 129, 0.2);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -220,7 +220,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 8px;
 }
 
@@ -256,9 +256,9 @@ body {
 }
 
 .btn-hud-tool {
-  background: rgba(56, 189, 248, 0.15);
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  color: var(--accent-cyan);
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: var(--accent-neon-cyan);
   padding: 3px 8px;
   border-radius: 4px;
   font-size: 11px;
@@ -268,8 +268,8 @@ body {
 }
 
 .btn-hud-tool.active {
-  background: var(--accent-cyan);
-  color: #0f172a;
+  background: var(--accent-green);
+  color: #061510;
 }
 
 .btn-hud-close {
@@ -291,8 +291,8 @@ body {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
-  background: rgba(10, 15, 29, 0.7);
-  border: 1px solid #1e293b;
+  background: rgba(6, 21, 16, 0.75);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 8px;
 }
@@ -338,8 +338,8 @@ body {
 
 /* Active Taxiway Box */
 .hud-taxiway-box {
-  background: linear-gradient(90deg, rgba(6, 182, 212, 0.15), rgba(15, 23, 42, 0.8));
-  border: 1px solid var(--accent-cyan);
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.18), rgba(9, 32, 23, 0.85));
+  border: 1px solid var(--accent-green);
   border-radius: 8px;
   padding: 8px 12px;
   display: flex;
@@ -359,7 +359,7 @@ body {
   font-size: 16px;
   font-weight: 800;
   color: var(--accent-neon-cyan);
-  text-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+  text-shadow: 0 0 8px rgba(16, 232, 170, 0.5);
 }
 
 /* Sequence tags */
@@ -391,15 +391,15 @@ body {
   padding: 2px 6px;
   border-radius: 4px;
   background: var(--bg-surface);
-  border: 1px solid #334155;
+  border: 1px solid var(--border-color);
   color: var(--text-muted);
 }
 
 .twy-tag.active {
-  background: var(--accent-cyan);
-  color: #0f172a;
+  background: var(--accent-green);
+  color: #061510;
   border-color: #fff;
-  box-shadow: 0 0 8px var(--accent-cyan);
+  box-shadow: 0 0 8px var(--accent-green);
 }
 
 .twy-tag.done {
@@ -415,7 +415,7 @@ body {
 }
 
 .hud-footer {
-  border-top: 1px solid #334155;
+  border-top: 1px solid var(--border-color);
   padding-top: 6px;
   font-size: 10px;
   color: var(--text-muted);
@@ -621,15 +621,15 @@ body {
 }
 
 .flight-card:hover {
-  border-color: var(--accent-cyan);
-  background-color: rgba(51, 65, 85, 0.6);
+  border-color: var(--border-highlight);
+  background-color: var(--bg-hover);
   transform: translateY(-1px);
 }
 
 .flight-card.selected {
-  border-color: #00e5ff;
-  box-shadow: 0 0 12px rgba(0, 229, 255, 0.25);
-  background: rgba(14, 165, 233, 0.12);
+  border-color: var(--accent-neon-cyan);
+  box-shadow: 0 0 12px rgba(16, 232, 170, 0.3);
+  background: rgba(16, 185, 129, 0.14);
 }
 
 .flight-card.is-live {
@@ -728,10 +728,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(15, 23, 42, 0.65);
+  background: rgba(9, 32, 23, 0.7);
   padding: 6px 10px;
   border-radius: 6px;
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  border: 1px solid var(--border-color);
 }
 
 .route-point {
@@ -791,9 +791,9 @@ body {
   font-size: 11px;
   color: #94a3b8;
   padding: 10px;
-  background: rgba(30, 41, 59, 0.5);
+  background: rgba(18, 51, 38, 0.5);
   border-radius: 6px;
-  border: 1px dashed rgba(71, 85, 105, 0.6);
+  border: 1px dashed var(--border-color);
 }
 
 /* Stand Editor Tab */
@@ -918,7 +918,7 @@ body {
 
 /* Leaflet Custom Marker & Shapes */
 .stand-marker-badge {
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(9, 32, 23, 0.92);
   border: 2px solid var(--stand-free);
   color: #fff;
   border-radius: 6px;
@@ -1044,8 +1044,8 @@ body {
   bottom: -16px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(10, 15, 29, 0.95);
-  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: rgba(6, 21, 16, 0.95);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   padding: 1px 5px;
   text-align: center;
@@ -1153,7 +1153,7 @@ body {
   bottom: 16px;
   left: 20px;
   right: 380px;
-  background: #111827;
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 10px 18px;
@@ -1597,8 +1597,8 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(56, 189, 248, 0.45);
+  background: rgba(9, 32, 23, 0.85);
+  border: 1px solid rgba(16, 185, 129, 0.45);
   color: var(--text-main);
   padding: 5px 10px;
   border-radius: 6px;
@@ -1610,14 +1610,14 @@ body {
 }
 
 .btn-runway-config:hover {
-  background: rgba(30, 41, 59, 0.95);
-  border-color: var(--accent-cyan);
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.25);
+  background: rgba(18, 51, 38, 0.95);
+  border-color: var(--accent-green);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
 }
 
 .btn-runway-config .rwy-icon {
   font-size: 13px;
-  color: var(--accent-cyan);
+  color: var(--accent-neon-cyan);
 }
 
 .btn-runway-config .rwy-text {
@@ -1628,12 +1628,12 @@ body {
 
 .btn-runway-config .rwy-summary {
   font-family: var(--font-mono);
-  color: #38bdf8;
+  color: var(--accent-neon-cyan);
   font-weight: 700;
-  background: rgba(14, 165, 233, 0.15);
+  background: rgba(16, 185, 129, 0.15);
   padding: 2px 6px;
   border-radius: 4px;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  border: 1px solid rgba(16, 185, 129, 0.35);
 }
 
 /* Modal Overlay & Card */
@@ -1664,15 +1664,15 @@ body {
 }
 
 .modal-card {
-  background: #0f172a;
-  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   width: 100%;
   max-width: 780px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7), 0 0 20px rgba(14, 165, 233, 0.15);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7), 0 0 20px rgba(16, 185, 129, 0.15);
   overflow: hidden;
 }
 
@@ -1681,8 +1681,8 @@ body {
   align-items: flex-start;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid rgba(51, 65, 85, 0.8);
-  background: #1e293b;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-surface);
 }
 
 .modal-badge {
@@ -1690,12 +1690,12 @@ body {
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 1px;
-  color: var(--accent-cyan);
-  background: rgba(0, 229, 255, 0.12);
+  color: var(--accent-neon-cyan);
+  background: rgba(16, 185, 129, 0.15);
   padding: 2px 7px;
   border-radius: 4px;
   margin-bottom: 4px;
-  border: 1px solid rgba(0, 229, 255, 0.25);
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .modal-title {
@@ -1756,8 +1756,8 @@ body {
 }
 
 .btn-preset {
-  background: rgba(30, 41, 59, 0.7);
-  border: 1px solid rgba(71, 85, 105, 0.6);
+  background: rgba(18, 51, 38, 0.7);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 10px 12px;
   text-align: left;
@@ -1769,14 +1769,14 @@ body {
 }
 
 .btn-preset:hover {
-  background: rgba(51, 65, 85, 0.8);
-  border-color: #38bdf8;
+  background: rgba(27, 69, 52, 0.85);
+  border-color: var(--accent-green);
 }
 
 .btn-preset.active {
-  background: rgba(14, 165, 233, 0.18);
-  border-color: #00e5ff;
-  box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
+  background: rgba(16, 185, 129, 0.2);
+  border-color: var(--accent-neon-cyan);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
 }
 
 .preset-title {
@@ -1787,7 +1787,7 @@ body {
 
 .preset-desc {
   font-size: 10px;
-  color: #94a3b8;
+  color: #9ab4a6;
 }
 
 /* 2-Column Runway Config Grid */
@@ -1798,8 +1798,8 @@ body {
 }
 
 .rwy-config-col {
-  background: rgba(30, 41, 59, 0.5);
-  border: 1px solid rgba(51, 65, 85, 0.7);
+  background: rgba(18, 51, 38, 0.5);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 14px;
   display: flex;
@@ -1808,7 +1808,7 @@ body {
 }
 
 .rwy-config-col.arr-col {
-  border-top: 3px solid #38bdf8;
+  border-top: 3px solid var(--accent-green);
 }
 
 .rwy-config-col.dep-col {
@@ -1820,7 +1820,7 @@ body {
   align-items: center;
   gap: 8px;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .col-icon {
@@ -1925,8 +1925,8 @@ body {
   max-height: 160px;
   overflow-y: auto;
   padding: 6px;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(51, 65, 85, 0.6);
+  background: rgba(9, 32, 23, 0.6);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
 }
 
@@ -1935,8 +1935,8 @@ body {
   align-items: center;
   gap: 6px;
   padding: 5px 8px;
-  background: rgba(30, 41, 59, 0.7);
-  border: 1px solid rgba(71, 85, 105, 0.5);
+  background: rgba(18, 51, 38, 0.7);
+  border: 1px solid var(--border-color);
   border-radius: 5px;
   font-size: 11px;
   font-family: var(--font-mono);
@@ -1947,12 +1947,12 @@ body {
 }
 
 .exit-checkbox-label:hover {
-  background: rgba(51, 65, 85, 0.9);
-  border-color: #38bdf8;
+  background: rgba(27, 69, 52, 0.9);
+  border-color: var(--accent-green);
 }
 
 .exit-checkbox-label input[type="checkbox"] {
-  accent-color: #00e5ff;
+  accent-color: var(--accent-neon-cyan);
   cursor: pointer;
 }
 
@@ -1961,8 +1961,8 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(14, 165, 233, 0.1);
-  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 11.5px;
@@ -1982,8 +1982,8 @@ body {
   justify-content: flex-end;
   gap: 10px;
   padding: 14px 20px;
-  border-top: 1px solid rgba(51, 65, 85, 0.8);
-  background: #1e293b;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-surface);
 }
 
 /* Map ATC Visual Markers */
@@ -2071,7 +2071,7 @@ body {
 
 /* Direction Badges on Map */
 .atc-rwy-dir-badge {
-  background: rgba(15, 23, 42, 0.92);
+  background: rgba(9, 32, 23, 0.92);
   padding: 3px 8px;
   border-radius: 5px;
   font-size: 10px;
@@ -2083,9 +2083,9 @@ body {
 }
 
 .atc-rwy-dir-badge.arr {
-  color: #38bdf8;
-  border: 1.5px solid #38bdf8;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+  color: var(--accent-neon-cyan);
+  border: 1.5px solid var(--accent-green);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
 }
 
 .atc-rwy-dir-badge.dep {
@@ -2128,5 +2128,173 @@ body {
   .modal-footer {
     padding: 10px 14px;
   }
+}
+
+/* ============================================================== */
+/* GEÇİCİ HOŞGELDİN POPUP STİLLERİ - Sonraki buildde kaldırılacak */
+/* ============================================================== */
+.welcome-modal-overlay {
+  z-index: 99999 !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(4, 15, 11, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.welcome-modal-card {
+  max-width: 520px;
+  width: 100%;
+  background: linear-gradient(180deg, #0e2b20, #081a13);
+  border: 1.5px solid #10b981;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(16, 185, 129, 0.25);
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+  padding: 32px 28px;
+  text-align: center;
+  animation: welcomePop 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes welcomePop {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.welcome-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  transition: all 0.2s;
+}
+
+.welcome-close-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.4);
+  transform: rotate(90deg);
+}
+
+.welcome-badge-icon {
+  font-size: 46px;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 0 16px rgba(16, 185, 129, 0.6));
+  animation: floatPlane 3s ease-in-out infinite alternate;
+}
+
+@keyframes floatPlane {
+  from { transform: translateY(0px) rotate(-3deg); }
+  to { transform: translateY(-6px) rotate(3deg); }
+}
+
+.welcome-header-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+}
+
+.welcome-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 10px;
+  line-height: 1.3;
+  letter-spacing: -0.3px;
+  background: linear-gradient(135deg, #ffffff 40%, #a7f3d0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.welcome-subtitle {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin-bottom: 20px;
+}
+
+.welcome-features {
+  background: rgba(7, 21, 16, 0.65);
+  border: 1px solid rgba(30, 77, 57, 0.7);
+  border-radius: 10px;
+  padding: 14px 16px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.welcome-feat-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 11.5px;
+  color: #e2e8f0;
+  line-height: 1.4;
+}
+
+.welcome-feat-item b {
+  color: #6ee7b7;
+}
+
+.welcome-feat-item .feat-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #10b981;
+  box-shadow: 0 0 6px #10b981;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.btn-welcome-start {
+  width: 100%;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.4);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-welcome-start:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(16, 185, 129, 0.6);
+  background: linear-gradient(135deg, #047857, #059669);
 }
 

@@ -35,6 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupUIEvents();
   setupHUDControls();
   setupTimelineControls();
+  initWelcomeModal();
   loadAirport("LTFJ");
 });
 
@@ -248,6 +249,37 @@ function setupUIEvents() {
       renderStandsList();
       updateStatistics();
       showToast("Tüm stand verileri temizlendi.");
+    }
+  });
+}
+
+// ==============================================================
+// GEÇİCİ HOŞGELDİN POPUP YÖNETİMİ - Sonraki buildde kaldırılacak
+// ==============================================================
+function initWelcomeModal() {
+  const modal = document.getElementById("welcomeModal");
+  const btnClose = document.getElementById("btnCloseWelcomeModal");
+  const btnStart = document.getElementById("btnStartWelcome");
+
+  if (!modal) return;
+
+  // Open modal automatically on page load
+  modal.classList.add("active");
+
+  const closeModal = () => {
+    modal.classList.remove("active");
+  };
+
+  if (btnClose) btnClose.addEventListener("click", closeModal);
+  if (btnStart) btnStart.addEventListener("click", closeModal);
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal.classList.contains("active")) {
+      closeModal();
     }
   });
 }
@@ -692,9 +724,9 @@ function renderAirportFeatures(geojson) {
       const layer = L.geoJSON(feature, {
         renderer: canvasRenderer,
         style: {
-          color: "#475569",
+          color: "#1e4d3a",
           weight: 1,
-          fillColor: "#1e293b",
+          fillColor: "#0f2b20",
           fillOpacity: 0.65
         }
       });
@@ -707,9 +739,9 @@ function renderAirportFeatures(geojson) {
       const layer = L.geoJSON(feature, {
         renderer: canvasRenderer,
         style: {
-          color: "#0f172a",
+          color: "#05100c",
           weight: isPolygon ? 2 : 20,
-          fillColor: "#182234",
+          fillColor: "#091d15",
           fillOpacity: 0.95,
           opacity: 0.95
         }
