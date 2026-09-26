@@ -358,10 +358,17 @@ class AircraftMarkerManager {
       marker._lastHeading = heading;
     }
 
-    // Update speed text only when it changes
-    if (marker._speedVal && speed !== marker._lastSpeed) {
-      marker._speedVal.textContent = speed;
-      marker._lastSpeed = speed;
+    // Update speed text or HOLD status only when it changes
+    const speedDisplay = flight.isQueued ? "HOLD" : speed;
+    if (marker._speedVal && marker._lastSpeedDisplay !== speedDisplay) {
+      marker._speedVal.textContent = speedDisplay;
+      marker._lastSpeedDisplay = speedDisplay;
+    }
+
+    // Toggle holding-separation styling on radar label
+    if (marker._label && marker._wasQueued !== !!flight.isQueued) {
+      marker._wasQueued = !!flight.isQueued;
+      marker._label.classList.toggle("holding-separation", !!flight.isQueued);
     }
 
     // Toggle selection glow state only when changed

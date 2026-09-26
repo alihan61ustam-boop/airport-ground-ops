@@ -480,6 +480,98 @@ function updateLiveHUD(flight) {
   // Active taxiway
   document.getElementById("hudCurrentTwy").textContent = flight.currentTwyName || "Taksi Yolu";
 
+  // Flight Safety Separation Protocol Status
+  const safetyBadge = document.getElementById("hudSafetyBadge");
+  const longStatus = document.getElementById("hudLongitudinalStatus");
+  const latStatus = document.getElementById("hudLateralStatus");
+  const safetyDetail = document.getElementById("hudSafetyDetail");
+
+  const dim = flight.dim || (window.GroundTrafficSimulator && window.GroundTrafficSimulator.getAircraftDim(flight.type)) || { length: 42, wingspan: 36 };
+  const minLongReq = flight.reqMinLong || Math.round(2.0 * dim.length);
+  const minLatReq = flight.reqMinLat || Math.round(1.5 * dim.wingspan);
+
+  if (flight.isQueued) {
+    if (safetyBadge) {
+      safetyBadge.className = "hud-safety-badge holding";
+      safetyBadge.textContent = "AYRIM KORUMA (HOLD)";
+    }
+    phaseElem.style.borderColor = "#f59e0b";
+    phaseElem.style.color = "#fbbf24";
+    phaseElem.style.background = "rgba(245, 158, 11, 0.25)";
+
+    if (flight.queueReason === "longitudinal") {
+      phaseElem.textContent = "Ön-Arka Ayrım Hold";
+      if (longStatus) {
+        longStatus.className = "rule-status warn";
+        longStatus.textContent = `Bekleniyor (${flight.conflictWith || 'Trafik'} < ${minLongReq}m)`;
+      }
+      if (latStatus) {
+        latStatus.className = "rule-status ok";
+        latStatus.textContent = `> ${minLatReq}m Korunuyor`;
+      }
+      if (safetyDetail) {
+        safetyDetail.classList.remove("hidden");
+        safetyDetail.textContent = `⚠️ Uçuş Güvenliği: Öndeki uçak (${flight.conflictWith || 'Trafik'}) ile 2 uçak boyu emniyet mesafesi (${minLongReq}m) sağlanana kadar taksi durduruldu.`;
+      }
+    } else if (flight.queueReason === "lateral") {
+      phaseElem.textContent = "Yanal Ayrım Hold";
+      if (longStatus) {
+        longStatus.className = "rule-status ok";
+        longStatus.textContent = `≥ ${minLongReq}m Korunuyor`;
+      }
+      if (latStatus) {
+        latStatus.className = "rule-status warn";
+        latStatus.textContent = `Bekleniyor (${flight.conflictWith || 'Trafik'} ≤ ${minLatReq}m)`;
+      }
+      if (safetyDetail) {
+        safetyDetail.classList.remove("hidden");
+        safetyDetail.textContent = `⚠️ Uçuş Güvenliği: Kesişen/yanal trafik (${flight.conflictWith || 'Trafik'}) ile 1.5x kanat açıklığı (${minLatReq}m) güvenlik ayrımı için yol veriliyor.`;
+      }
+    } else if (flight.queueReason === "takeoff_separation") {
+      phaseElem.textContent = "Pist Ayrım Hold";
+      if (longStatus) {
+        longStatus.className = "rule-status warn";
+        longStatus.textContent = `Pist Beklemesi (Hold)`;
+      }
+      if (latStatus) {
+        latStatus.className = "rule-status ok";
+        latStatus.textContent = `> ${minLatReq}m Korunuyor`;
+      }
+      if (safetyDetail) {
+        safetyDetail.classList.remove("hidden");
+        safetyDetail.textContent = `⚠️ Uçuş Güvenliği: Pistteki iniş/kalkış trafiği (${flight.conflictWith || 'Pist'}) ayrımı tamamlanana kadar bekleme noktasında tutuluyor.`;
+      }
+    } else {
+      phaseElem.textContent = "Taksi Sırasında";
+      if (longStatus) longStatus.textContent = `Taksi Sırasında Bekliyor`;
+      if (latStatus) latStatus.textContent = `> ${minLatReq}m Korunuyor`;
+      if (safetyDetail) {
+        safetyDetail.classList.remove("hidden");
+        safetyDetail.textContent = `Taksi yolu güvenlik ayrımı gereğince yer hareketi durduruldu.`;
+      }
+    }
+  } else {
+    phaseElem.style.borderColor = "";
+    phaseElem.style.color = "";
+    phaseElem.style.background = "";
+
+    if (safetyBadge) {
+      safetyBadge.className = "hud-safety-badge safe";
+      safetyBadge.textContent = "GÜVENLİ (STANDART)";
+    }
+    if (longStatus) {
+      longStatus.className = "rule-status ok";
+      longStatus.textContent = `≥ 2 Uçak Boyu (${minLongReq}m) Aktif`;
+    }
+    if (latStatus) {
+      latStatus.className = "rule-status ok";
+      latStatus.textContent = `> 1.5x Kanat (${minLatReq}m) Aktif`;
+    }
+    if (safetyDetail) {
+      safetyDetail.classList.add("hidden");
+    }
+  }
+
   // Sequence tags
   renderHUDSequenceTags(flight);
 
@@ -632,6 +724,8 @@ function setupTimelineControls() {
     document.getElementById("trafficTaxiing").textContent = c.taxiing;
     document.getElementById("trafficOnStand").textContent = c.on_stand;
     document.getElementById("trafficTakeoff").textContent = c.takeoff;
+    const holdEl = document.getElementById("trafficSafetyHold");
+    if (holdEl) holdEl.textContent = c.safetyHold || 0;
 
     // Live HUD refresh if an aircraft is currently selected
     if (selectedFlightId) {

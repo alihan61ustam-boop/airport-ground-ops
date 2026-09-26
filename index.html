@@ -118,6 +118,30 @@
         </div>
       </div>
 
+      <!-- Flight Safety Separation Protocol Status -->
+      <div class="hud-safety-box" id="hudSafetyBox">
+        <div class="hud-safety-header">
+          <div class="hud-safety-title-line">
+            <span class="hud-safety-icon">🛡️</span>
+            <span class="hud-safety-label">UÇUŞ GÜVENLİĞİ AYRIM DURUMU:</span>
+          </div>
+          <span id="hudSafetyBadge" class="hud-safety-badge safe">GÜVENLİ</span>
+        </div>
+        <div class="hud-safety-rules">
+          <div class="hud-safety-rule-item">
+            <span class="rule-icon">↕</span>
+            <span class="rule-name">Ön-Arka (Dikey):</span>
+            <span id="hudLongitudinalStatus" class="rule-status ok">≥ 2 Uçak Boyu Korunuyor</span>
+          </div>
+          <div class="hud-safety-rule-item">
+            <span class="rule-icon">↔</span>
+            <span class="rule-name">Yanal Pozisyon:</span>
+            <span id="hudLateralStatus" class="rule-status ok">&gt; 1.5x Kanat Korunuyor</span>
+          </div>
+        </div>
+        <div id="hudSafetyDetail" class="hud-safety-detail hidden"></div>
+      </div>
+
       <div class="hud-footer">
         <div class="hud-route-text">Hedef: <b id="hudDestStand" style="color: var(--accent-cyan);">Stand F13</b> | Rota: <span id="hudRoute">IST ➔ JFK</span></div>
       </div>
@@ -162,6 +186,10 @@
           <div class="traffic-badge" title="Pistten Havalanan Uçaklar">
             <span style="color: #ef4444;">🛫 Kalkış:</span>
             <span id="trafficTakeoff" class="count">0</span>
+          </div>
+          <div class="traffic-badge" title="Uçuş Güvenliği Ayrım Beklemesinde Olan Uçaklar (≥2 Uçak Boyu & >1.5x Kanat)">
+            <span style="color: #fbbf24;">🛡️ Ayrım Hold:</span>
+            <span id="trafficSafetyHold" class="count">0</span>
           </div>
         </div>
       </div>

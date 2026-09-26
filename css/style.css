@@ -414,6 +414,123 @@ body {
   border-color: rgba(249, 115, 22, 0.5);
 }
 
+/* Flight Safety Separation Status in HUD */
+.hud-safety-box {
+  background: rgba(6, 21, 16, 0.92);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: inset 0 0 12px rgba(16, 185, 129, 0.08);
+}
+
+.hud-safety-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hud-safety-title-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.hud-safety-icon {
+  font-size: 13px;
+}
+
+.hud-safety-label {
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+}
+
+.hud-safety-badge {
+  font-size: 8.5px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.hud-safety-badge.safe {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+}
+
+.hud-safety-badge.holding {
+  background: rgba(245, 158, 11, 0.25);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.6);
+  animation: pulseSafetyBadge 1.5s infinite;
+}
+
+@keyframes pulseSafetyBadge {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.75; transform: scale(1.03); }
+}
+
+.hud-safety-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.hud-safety-rule-item {
+  display: flex;
+  align-items: center;
+  font-size: 9.5px;
+  gap: 6px;
+}
+
+.rule-icon {
+  font-size: 11px;
+  color: #38bdf8;
+  font-weight: 800;
+  width: 12px;
+  text-align: center;
+}
+
+.rule-name {
+  color: #cbd5e1;
+  font-weight: 600;
+  min-width: 90px;
+}
+
+.rule-status {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+.rule-status.ok {
+  color: #34d399;
+}
+
+.rule-status.warn {
+  color: #fbbf24;
+}
+
+.hud-safety-detail {
+  font-size: 9px;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.12);
+  border-left: 2px solid #f59e0b;
+  padding: 4px 6px;
+  border-radius: 2px;
+  line-height: 1.35;
+}
+
 .hud-footer {
   border-top: 1px solid var(--border-color);
   padding-top: 6px;
@@ -1059,6 +1176,21 @@ body {
   border-color: var(--accent-neon-cyan);
   background: rgba(0, 229, 255, 0.25);
   box-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+}
+
+.aircraft-radar-label.holding-separation {
+  border-color: #f59e0b !important;
+  background: rgba(30, 20, 5, 0.95) !important;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.7) !important;
+}
+
+.aircraft-radar-label.holding-separation .flight-code {
+  color: #fbbf24 !important;
+}
+
+.aircraft-radar-label.holding-separation .flight-speed-val {
+  color: #f59e0b !important;
+  font-weight: 800;
 }
 
 .aircraft-radar-label .flight-code {
