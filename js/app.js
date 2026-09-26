@@ -36,7 +36,8 @@ document.addEventListener("DOMContentLoaded", () => {
   setupHUDControls();
   setupTimelineControls();
   initWelcomeModal();
-  loadAirport("LTFJ");
+  initTaxiwayDirectionsUI();
+  loadAirport(document.getElementById("airportSelect")?.value || "LTFM");
 });
 
 function initMap() {
@@ -103,6 +104,10 @@ function initMap() {
       clearAircraftSelection();
     }
   });
+
+  if (window.TaxiwayDirectionManager) {
+    window.TaxiwayDirectionManager.initMapOverlay(map);
+  }
 }
 
 function setupUIEvents() {
@@ -296,6 +301,137 @@ function initWelcomeModal() {
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeWelcomeModal();
   });
+}
+
+/**
+ * Setup Taxiway Directions & One-Way Traffic Flow Modal Controls
+ */
+function initTaxiwayDirectionsUI() {
+  const modal = document.getElementById("taxiwayDirModal");
+  const btnOpen = document.getElementById("btnTaxiwayDirModalOpen");
+  const btnClose = document.getElementById("btnCloseDirModal");
+  const btnApply = document.getElementById("btnApplyDirections");
+  const btnPresetAlt = document.getElementById("btnPresetAlternating");
+  const btnPresetRev = document.getElementById("btnPresetReverse");
+  const btnPresetBidir = document.getElementById("btnPresetBidir");
+  const chkOverlay = document.getElementById("chkShowFlowArrows");
+  const container = document.getElementById("corridorsContainer");
+  const headerSummary = document.getElementById("headerTaxiDirSummary");
+
+  function renderCorridorRows() {
+    if (!container || !window.TaxiwayDirectionManager) return;
+    const corridors = window.TaxiwayDirectionManager.getCorridors(currentIcao);
+    if (!corridors || corridors.length === 0) {
+      container.innerHTML = `<div style="padding:15px; color:#94a3b8; font-size:12px; text-align:center;">Bu havalimanı için tanımlı paralel hat bulunmuyor.</div>`;
+      return;
+    }
+
+    container.innerHTML = corridors.map(c => {
+      const isEast = (c.direction === "WEST_TO_EAST");
+      const isWest = (c.direction === "EAST_TO_WEST");
+      const isBidir = (c.direction === "BIDIRECTIONAL");
+
+      return `
+        <div class="corridor-card" data-corridor-id="${c.id}">
+          <div class="corridor-header">
+            <span class="corridor-name">🛣️ ${c.name}</span>
+            <span class="corridor-badge ${isEast ? 'dir-east' : (isWest ? 'dir-west' : 'dir-bidir')}">
+              ${isEast ? '➔ Batıdan Doğuya (W➔E)' : (isWest ? '⬅ Doğudan Batıya (E➔W)' : '⬌ Çift Yön')}
+            </span>
+          </div>
+          <div class="corridor-actions">
+            <button class="corridor-btn ${isEast ? 'active' : ''}" data-dir="WEST_TO_EAST">➔ Batıdan Doğuya</button>
+            <button class="corridor-btn ${isWest ? 'active' : ''}" data-dir="EAST_TO_WEST">⬅ Doğudan Batıya</button>
+            <button class="corridor-btn ${isBidir ? 'active' : ''}" data-dir="BIDIRECTIONAL">⬌ Çift Yön</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    container.querySelectorAll(".corridor-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const card = e.target.closest(".corridor-card");
+        if (!card) return;
+        const cId = card.dataset.corridorId;
+        const dir = e.target.dataset.dir;
+        window.TaxiwayDirectionManager.setCorridorDirection(cId, dir);
+        renderCorridorRows();
+        showToast("Taksi yolu yönü güncellendi ve rotalar hesaplandı.");
+      });
+    });
+  }
+
+  if (btnOpen) {
+    btnOpen.addEventListener("click", () => {
+      renderCorridorRows();
+      if (modal) modal.classList.remove("hidden");
+    });
+  }
+  if (btnClose) {
+    btnClose.addEventListener("click", () => {
+      if (modal) modal.classList.add("hidden");
+    });
+  }
+  if (modal) {
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) modal.classList.add("hidden");
+    });
+  }
+  if (btnApply) {
+    btnApply.addEventListener("click", () => {
+      if (window.TaxiwayDirectionManager) {
+        window.TaxiwayDirectionManager.rebuildSystemRoutes();
+      }
+      if (modal) modal.classList.add("hidden");
+      showToast("Tüm uçuş rotaları belirlenen taksi yolu akış yönlerine göre güncellendi.");
+    });
+  }
+
+  if (btnPresetAlt) {
+    btnPresetAlt.addEventListener("click", () => {
+      if (window.TaxiwayDirectionManager) {
+        window.TaxiwayDirectionManager.setPreset("ALTERNATING");
+        document.querySelectorAll(".btn-preset").forEach(b => b.classList.remove("active"));
+        btnPresetAlt.classList.add("active");
+        if (headerSummary) headerSummary.textContent = "Alternatif Akış";
+        renderCorridorRows();
+        showToast("Alternatif akış şablonu uygulandı (W➔E / E➔W).");
+      }
+    });
+  }
+  if (btnPresetRev) {
+    btnPresetRev.addEventListener("click", () => {
+      if (window.TaxiwayDirectionManager) {
+        window.TaxiwayDirectionManager.setPreset("REVERSE_ALTERNATING");
+        document.querySelectorAll(".btn-preset").forEach(b => b.classList.remove("active"));
+        btnPresetRev.classList.add("active");
+        if (headerSummary) headerSummary.textContent = "Ters Alternatif";
+        renderCorridorRows();
+        showToast("Ters alternatif akış şablonu uygulandı (E➔W / W➔E).");
+      }
+    });
+  }
+  if (btnPresetBidir) {
+    btnPresetBidir.addEventListener("click", () => {
+      if (window.TaxiwayDirectionManager) {
+        window.TaxiwayDirectionManager.setPreset("BIDIRECTIONAL");
+        document.querySelectorAll(".btn-preset").forEach(b => b.classList.remove("active"));
+        btnPresetBidir.classList.add("active");
+        if (headerSummary) headerSummary.textContent = "Çift Yön";
+        renderCorridorRows();
+        showToast("Tüm hatlar çift yönlü akışa açıldı.");
+      }
+    });
+  }
+
+  if (chkOverlay) {
+    chkOverlay.addEventListener("change", (e) => {
+      if (window.TaxiwayDirectionManager) {
+        window.TaxiwayDirectionManager.isOverlayVisible = e.target.checked;
+        window.TaxiwayDirectionManager.refreshOverlay();
+      }
+    });
+  }
 }
 
 /**
@@ -667,6 +803,8 @@ function updateStandCounterChips() {
  */
 function setupTimelineControls() {
   trafficSim = new GroundTrafficSimulator(currentIcao);
+  window.trafficSim = trafficSim;
+  window.trafficSimulator = trafficSim;
   trafficSim.start();
 
   const btnPlay = document.getElementById("btnPlayPause");
@@ -765,6 +903,9 @@ async function loadAirport(icao) {
   if (window.RunwayConfigManager) {
     window.RunwayConfigManager.setAirport(icao);
   }
+  if (window.TaxiwayDirectionManager) {
+    window.TaxiwayDirectionManager.airportIcao = icao;
+  }
 
   try {
     const result = await AirportDataService.loadAirportData(icao);
@@ -782,6 +923,10 @@ async function loadAirport(icao) {
 
     if (trafficSim) {
       trafficSim.setAirport(icao);
+    }
+
+    if (window.TaxiwayDirectionManager) {
+      window.TaxiwayDirectionManager.refreshOverlay();
     }
 
     if (typeof updateFlightFilterBadges === "function") {

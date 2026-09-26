@@ -2434,3 +2434,181 @@ body {
   background: linear-gradient(135deg, #047857, #059669);
 }
 
+/* ========================================================= */
+/* TAXIWAY FLOW DIRECTIONS (ONE-WAY TAXIWAY SYSTEM)          */
+/* ========================================================= */
+.btn-taxi-dir {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+.btn-taxi-dir:hover {
+  background: rgba(16, 185, 129, 0.28) !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4) !important;
+}
+
+.taxi-flow-badge {
+  background: rgba(6, 21, 16, 0.92);
+  border: 1px solid #10b981;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 8px rgba(16, 185, 129, 0.3);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.taxi-flow-badge:hover {
+  transform: scale(1.08);
+  background: rgba(16, 185, 129, 0.25);
+}
+
+.flow-arrow-container {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Taxiway Directions Modal */
+.dir-modal-card {
+  max-width: 680px !important;
+}
+
+.dir-info-banner {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 11.5px;
+  color: #a7f3d0;
+  line-height: 1.45;
+  margin-bottom: 14px;
+}
+
+.dir-preset-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.preset-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.btn-preset {
+  background: rgba(6, 21, 16, 0.7);
+  border: 1px solid var(--border-color);
+  color: #cbd5e1;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-preset:hover, .btn-preset.active {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+  color: #10e8aa;
+}
+
+.corridors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+  padding-right: 4px;
+}
+
+.corridor-row-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(6, 21, 16, 0.85);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 14px;
+  transition: border-color 0.2s;
+}
+
+.corridor-row-card:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.corridor-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.corridor-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: #f8fafc;
+}
+
+.corridor-sub {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+
+.corridor-dir-selector {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-dir-opt {
+  background: rgba(18, 51, 38, 0.6);
+  border: 1px solid var(--border-color);
+  color: #94a3b8;
+  padding: 5px 9px;
+  font-size: 10.5px;
+  font-weight: 700;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-dir-opt.active.east {
+  background: rgba(16, 185, 129, 0.3);
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.btn-dir-opt.active.west {
+  background: rgba(0, 229, 255, 0.25);
+  border-color: #00e5ff;
+  color: #38bdf8;
+}
+
+.btn-dir-opt.active.bidir {
+  background: rgba(148, 163, 184, 0.2);
+  border-color: #94a3b8;
+  color: #f1f5f9;
+}
+
+.dir-overlay-toggle-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: #cbd5e1;
+}
+

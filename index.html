@@ -44,6 +44,13 @@
         <span id="headerRunwaySummary" class="rwy-summary">Yükleniyor...</span>
       </button>
 
+      <!-- Taxiway Flow Directions Button -->
+      <button id="btnTaxiwayDirModalOpen" class="btn-runway-config btn-taxi-dir" title="Taksi Yolları Tek Yön Akış Yönetimi & Harita Gösterimi">
+        <span class="rwy-icon">🔀</span>
+        <span class="rwy-text">TAKSİ YÖNLERİ:</span>
+        <span id="headerTaxiDirSummary" class="rwy-summary">Alternatif Akış</span>
+      </button>
+
       <!-- Status Indicator -->
       <div class="status-badge">
         <span class="status-dot"></span>
@@ -483,6 +490,51 @@
     </div>
   </div>
 
+  <!-- Taxiway Directions & One-Way Flow Manager Modal -->
+  <div id="taxiwayDirModal" class="modal-backdrop hidden">
+    <div class="modal-card dir-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-box">
+          <span class="modal-icon">🔀</span>
+          <h3 class="modal-title">Taksi Yolları Tek Yön Akış Yönetimi</h3>
+          <span class="modal-subtitle">Paralel Taksi Hatları Yön Tayini & Akıllı Rotalama</span>
+        </div>
+        <button id="btnCloseDirModal" class="modal-close-btn" title="Kapat">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="dir-info-banner">
+          <span>ℹ️ Uçakların taksi sürelerini kısaltmak ve kafa kafaya (head-on) kilitlenmeleri önlemek için paralel hatlar alternatif tek yönlü akışla yönetilir. Yönleri haritadan veya aşağıdaki tablodan değiştirebilirsiniz.</span>
+        </div>
+
+        <!-- Quick Presets -->
+        <div class="dir-preset-bar">
+          <span class="preset-label">Hızlı Şablonlar:</span>
+          <button id="btnPresetAlternating" class="btn-preset active">🔄 Alternatif Akış (W➔E / E➔W)</button>
+          <button id="btnPresetReverse" class="btn-preset">🔁 Ters Alternatif (E➔W / W➔E)</button>
+          <button id="btnPresetBidir" class="btn-preset">⬌ Tamamı Çift Yön</button>
+        </div>
+
+        <!-- Corridors List -->
+        <div id="corridorsContainer" class="corridors-list">
+          <!-- Populated dynamically by JS -->
+        </div>
+
+        <div class="dir-overlay-toggle-box">
+          <label class="dir-toggle-switch">
+            <input type="checkbox" id="chkShowFlowArrows" checked>
+            <span class="slider round"></span>
+          </label>
+          <span class="toggle-text">Harita Üzerinde Akış Yönü Oklarını (Chevrons) Göster</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btnApplyDirections" class="btn btn-primary">⚡ Uygula & Rotaları Yenile</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ============================================================== -->
   <!-- GEÇİCİ HOŞGELDİN POPUP - Sonraki buildde kaldırılacak          -->
   <!-- ============================================================== -->
@@ -527,10 +579,13 @@
 
   <!-- Leaflet Map JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Real-World Flightradar24 Feed -->
+  <script src="data/real-flights-ist.js"></script>
   <!-- App JS Files -->
   <script src="js/overpass.js"></script>
   <script src="js/runway-config.js"></script>
   <script src="js/stand-allocator.js"></script>
+  <script src="js/taxiway-directions.js"></script>
   <script src="js/taxiway-router.js"></script>
   <script src="js/aircraft-marker.js"></script>
   <script src="js/traffic-simulator.js"></script>

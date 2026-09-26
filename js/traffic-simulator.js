@@ -18,10 +18,20 @@ const AIRCRAFT_DIMENSIONS = {
   "A350-900":   { length: 66.8, wingspan: 64.75 },
   "A330-300":   { length: 63.6, wingspan: 60.3 },
   "B787-9":     { length: 62.8, wingspan: 60.1 },
+  "A388":       { length: 72.7, wingspan: 79.8 },
+  "B744":       { length: 70.6, wingspan: 64.4 },
+  "B767-300":   { length: 54.9, wingspan: 47.6 },
+  "A300-600":   { length: 54.1, wingspan: 44.8 },
+  "B737-900ER": { length: 42.1, wingspan: 35.8 },
   "A321neo":    { length: 44.5, wingspan: 35.8 },
   "A320neo":    { length: 37.6, wingspan: 35.8 },
+  "A319":       { length: 33.8, wingspan: 34.1 },
+  "A220-300":   { length: 38.7, wingspan: 35.1 },
   "B737-800":   { length: 39.5, wingspan: 35.8 },
   "B737-MAX8":  { length: 39.5, wingspan: 35.9 },
+  "E190":       { length: 36.2, wingspan: 28.7 },
+  "ATR72":      { length: 27.2, wingspan: 27.1 },
+  "Bizjet":     { length: 29.0, wingspan: 28.0 },
   "DEFAULT":    { length: 42.0, wingspan: 36.0 }
 };
 
@@ -29,6 +39,7 @@ function getAircraftDim(acType) {
   if (!acType) return AIRCRAFT_DIMENSIONS["DEFAULT"];
   return AIRCRAFT_DIMENSIONS[acType] || AIRCRAFT_DIMENSIONS["DEFAULT"];
 }
+window.getAircraftDim = getAircraftDim;
 
 class GroundTrafficSimulator {
   constructor(airportIcao = "LTFJ") {
@@ -114,6 +125,9 @@ class GroundTrafficSimulator {
     if (!window.TaxiwayGraphRouter || !window.TaxiwayGraphRouter.isGraphReady) return;
     if (window.TaxiwayGraphRouter.edgeUsageMap) {
       window.TaxiwayGraphRouter.edgeUsageMap.clear();
+    }
+    if (window.TaxiwayGraphRouter.routeCache) {
+      window.TaxiwayGraphRouter.routeCache.clear();
     }
     const isLTFM = (this.airportIcao === "LTFM");
     const baseStands = this.getAirportStands();
@@ -303,6 +317,82 @@ class GroundTrafficSimulator {
   generateLTFMSchedule(availableStands) {
     if (window.StandAllocationEngine) {
       window.StandAllocationEngine.init("LTFM", availableStands);
+    }
+
+    // Load real-world Flightradar24 flights for LTFM if available
+    if (window.REAL_FLIGHTS_IST && window.REAL_FLIGHTS_IST.flights && window.REAL_FLIGHTS_IST.flights.length > 0) {
+      const realFlights = window.REAL_FLIGHTS_IST.flights;
+      console.log(`[TrafficSimulator] Ingesting ${realFlights.length} real-world Flightradar24 flights for LTFM (Today up to 21:00)...`);
+
+      for (let i = 0; i < realFlights.length; i++) {
+        const rf = realFlights[i];
+        const arrivalSec = rf.arrivalSec;
+        const departureSec = rf.departureSec;
+        const groundTimeSec = rf.groundTimeSec || Math.max(35 * 60, departureSec - arrivalSec);
+
+        const flightMeta = {
+          id: rf.id,
+          airline: rf.airline,
+          type: rf.type,
+          origin: rf.origin,
+          destination: rf.destination
+        };
+
+        // Intelligent stand allocation with zero overlap, widebody gate targeting, and pier balancing
+        let standObj = null;
+        if (window.StandAllocationEngine) {
+          standObj = window.StandAllocationEngine.allocateStand(
+            flightMeta,
+            arrivalSec,
+            departureSec
+          );
+        }
+        if (!standObj) {
+          const sIdx = (i * 11) % (availableStands.length || 1);
+          standObj = availableStands.length > 0 ? availableStands[sIdx] : { ref: "F13", lat: 41.26647, lon: 28.74934 };
+        }
+
+        const routeData = window.TaxiwayGraphRouter.generateAutonomousFlightTrajectory(
+          true,
+          standObj.ref,
+          [standObj.lat, standObj.lon],
+          arrivalSec,
+          groundTimeSec,
+          i + 1
+        );
+
+        this.flights.push({
+          id: rf.id,
+          callsign: rf.callsign || rf.flightNumber,
+          flightNumber: rf.flightNumber,
+          airline: rf.airline,
+          airlineName: rf.airlineName,
+          registration: rf.registration,
+          type: rf.type,
+          dim: getAircraftDim(rf.type),
+          origin: rf.origin,
+          destination: rf.destination,
+          city: (rf.kind === "arrival" ? rf.originCity : rf.destinationCity) || "İstanbul",
+          standRef: standObj.ref,
+          eta: this.formatTime(arrivalSec + 370),
+          etd: this.formatTime(departureSec - 340),
+          timeInFormatted: this.formatTime(arrivalSec + 370),
+          timeOutFormatted: this.formatTime(departureSec - 340),
+          startTime: arrivalSec - 180,
+          endTime: departureSec + 130,
+          trajectory: routeData.trajectory,
+          fullRoute: routeData.fullRoute,
+          twySequence: routeData.twySequence,
+          currentTwyName: "Approach",
+          delaySeconds: 0,
+          isQueued: false,
+          queueReason: null,
+          conflictWith: null
+        });
+      }
+
+      console.log(`[TrafficSimulator] Successfully generated real Flightradar24 LTFM schedule: ${this.flights.length} active flights.`);
+      return;
     }
 
     const airlines = [
@@ -823,7 +913,8 @@ class GroundTrafficSimulator {
     let anyChanged = false;
 
     window.standsMap.forEach(standObj => {
-      if (standObj.customData && standObj.customData.manual) return;
+      if (!standObj.customData) standObj.customData = { status: "free" };
+      if (standObj.customData.manual) return;
 
       const activeFlight = occupiedFlightsMap.get(standObj.ref);
       const isOccupied = !!activeFlight;
