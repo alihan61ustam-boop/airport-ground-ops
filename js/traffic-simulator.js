@@ -44,7 +44,10 @@ window.getAircraftDim = getAircraftDim;
 class GroundTrafficSimulator {
   constructor(airportIcao = "LTFJ") {
     this.airportIcao = (airportIcao === "LTFM") ? "LTFM" : "LTFJ";
-    this.simSeconds = 8 * 3600 + 15 * 60; // 08:15:00
+    // Initialize simulation time to current real-world time in Istanbul (UTC+3)
+    const now = new Date();
+    const currentSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+    this.simSeconds = (currentSec >= 0 && currentSec <= 21 * 3600) ? currentSec : (9 * 3600 + 50 * 60);
     this.isPlaying = true;
     this.speedMultiplier = 15;
     this.flights = [];

@@ -12,7 +12,7 @@ class TaxiwayDirectionManager {
   constructor() {
     this.airportIcao = "LTFM";
     this.overlayLayerGroup = null;
-    this.isOverlayVisible = true;
+    this.isOverlayVisible = false;
 
     // Corridor configurations
     this.corridors = {

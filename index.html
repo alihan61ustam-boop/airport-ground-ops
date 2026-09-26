@@ -68,6 +68,58 @@
   <!-- Main Application Workspace -->
   <main class="main-container">
     
+    <!-- Live Airport Weather Telemetry Widget (Top-Left on Map) -->
+    <div id="airportWeatherWidget" class="airport-weather-widget">
+      <div class="weather-widget-header">
+        <div class="weather-title-row">
+          <span id="weatherIcon" class="weather-main-icon">⛅</span>
+          <div class="weather-title-info">
+            <div class="weather-station-name"><span id="weatherStationIcao">LTFM</span> · ANLIK HAVA DURUMU</div>
+            <div class="weather-condition-text" id="weatherCondition">20°C · Parçalı Bulutlu</div>
+          </div>
+        </div>
+        <div class="weather-badge-vfr" id="weatherFlightCat">VFR</div>
+      </div>
+
+      <div class="weather-widget-grid">
+        <div class="weather-metric-item">
+          <span class="metric-icon">🌬️</span>
+          <div class="metric-body">
+            <span class="metric-label">RÜZGAR / HAMLE</span>
+            <span class="metric-val" id="weatherWind">060° / 09 KT (Poyraz)</span>
+            <span class="metric-sub" id="weatherWindComp">Pist 16R Karşı Rüzgar</span>
+          </div>
+        </div>
+
+        <div class="weather-metric-item">
+          <span class="metric-icon">🌧️</span>
+          <div class="metric-body">
+            <span class="metric-label">YAĞIŞ İHTİMALİ</span>
+            <span class="metric-val" id="weatherPrecipProb">%0 İhtimal</span>
+            <span class="metric-sub" id="weatherPrecipAmount">0.0 mm / Yağışsız</span>
+          </div>
+        </div>
+
+        <div class="weather-metric-item">
+          <span class="metric-icon">💧</span>
+          <div class="metric-body">
+            <span class="metric-label">NEM & GÖRÜŞ</span>
+            <span class="metric-val" id="weatherHumidity">Nem: %73</span>
+            <span class="metric-sub" id="weatherVisibility">Görüş: 10+ km (CAVOK)</span>
+          </div>
+        </div>
+
+        <div class="weather-metric-item">
+          <span class="metric-icon">🧭</span>
+          <div class="metric-body">
+            <span class="metric-label">BASINÇ (ALTIMETRE)</span>
+            <span class="metric-val" id="weatherQNH">1016 hPa (QNH)</span>
+            <span class="metric-sub" id="weatherTempMinMax">Yüzey: 1003 hPa</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Map Container -->
     <div id="map"></div>
 
@@ -160,8 +212,14 @@
         <div class="timeline-playback-controls">
           <button id="btnPlayPause" class="btn-play" title="Oynat / Duraklat">⏸</button>
           <div class="timeline-clock">
-            <span id="digitalClock" class="digital-time">08:15:00</span>
-            <span class="digital-label">SİMÜLASYON SAATİ (TRT)</span>
+            <div class="timeline-date-row">
+              <span id="digitalDate" class="digital-date">📅 26 Eylül 2026, Cumartesi</span>
+              <span class="digital-data-window-badge">CANLI VERİ: 21:00'A KADAR</span>
+            </div>
+            <div class="timeline-time-row">
+              <span id="digitalClock" class="digital-time">09:50:00</span>
+              <span class="digital-label">SİMÜLASYON SAATİ (TRT) · İLERİYE DOĞRU AKIŞ</span>
+            </div>
           </div>
           <div class="timeline-speed-selector">
             <button class="speed-btn" data-speed="1">1x</button>
@@ -176,7 +234,7 @@
         <div class="timeline-traffic-metrics">
           <div class="traffic-badge" title="Toplam Günlük Uçuş Programı">
             <span style="color: #cbd5e1;">📋 Toplam Uçuş:</span>
-            <span id="trafficTotalDay" class="count">648</span>
+            <span id="trafficTotalDay" class="count">1250</span>
           </div>
           <div class="traffic-badge" title="Piste İniş / Yaklaşmadaki Uçaklar">
             <span style="color: #38bdf8;">🛬 İniş:</span>
@@ -204,7 +262,8 @@
       <!-- Scrubber Slider -->
       <div class="timeline-slider-row">
         <span class="time-marker-text">00:00</span>
-        <input type="range" id="timelineSlider" class="timeline-slider" min="0" max="86399" value="29700" step="1">
+        <input type="range" id="timelineSlider" class="timeline-slider" min="0" max="86399" value="35400" step="1">
+        <span class="time-marker-badge" title="Flightradar24 Canlı Radar Veri Kapsamı">🔴 CANLI RADAR KAPSAMI: 21:00'A KADAR</span>
         <span class="time-marker-text">23:59</span>
       </div>
     </div>
@@ -491,8 +550,8 @@
   </div>
 
   <!-- Taxiway Directions & One-Way Flow Manager Modal -->
-  <div id="taxiwayDirModal" class="modal-backdrop hidden">
-    <div class="modal-card dir-modal-card">
+  <div id="taxiwayDirModal" class="modal-overlay hidden" style="display: none;">
+    <div class="modal-card modal-runway-card dir-modal-card">
       <div class="modal-header">
         <div class="modal-title-box">
           <span class="modal-icon">🔀</span>
@@ -522,7 +581,7 @@
 
         <div class="dir-overlay-toggle-box">
           <label class="dir-toggle-switch">
-            <input type="checkbox" id="chkShowFlowArrows" checked>
+            <input type="checkbox" id="chkShowFlowArrows">
             <span class="slider round"></span>
           </label>
           <span class="toggle-text">Harita Üzerinde Akış Yönü Oklarını (Chevrons) Göster</span>

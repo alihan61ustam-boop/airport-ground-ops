@@ -2612,3 +2612,207 @@ body {
   color: #cbd5e1;
 }
 
+/* ========================================================================== */
+/* Live Airport Weather Telemetry Widget (Top-Left on Map)                   */
+/* ========================================================================== */
+.airport-weather-widget {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 800;
+  width: 320px;
+  background: rgba(10, 26, 20, 0.92);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 10px;
+  padding: 10px 13px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 18px rgba(16, 185, 129, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: auto;
+  user-select: none;
+  transition: all 0.25s ease;
+}
+
+.airport-weather-widget:hover {
+  border-color: rgba(16, 185, 129, 0.65);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.75), 0 0 24px rgba(16, 185, 129, 0.25);
+}
+
+.weather-widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 7px;
+  margin-bottom: 8px;
+}
+
+.weather-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.weather-main-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.weather-title-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.weather-station-name {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--accent-green, #10b981);
+  text-transform: uppercase;
+}
+
+.weather-condition-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.weather-badge-vfr {
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  font-family: var(--font-mono, monospace);
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.weather-badge-vfr.ifr {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.weather-badge-vfr.mvfr {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.weather-widget-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+
+.weather-metric-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.weather-metric-item .metric-icon {
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.weather-metric-item .metric-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.weather-metric-item .metric-label {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.weather-metric-item .metric-val {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e2e8f0;
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.weather-metric-item .metric-sub {
+  font-size: 9px;
+  color: #6ee7b7;
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Timeline Date Row & Digital Clock styling */
+.timeline-clock {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.timeline-date-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+}
+
+.digital-date {
+  font-size: 11px;
+  font-weight: 700;
+  color: #a7f3d0;
+  white-space: nowrap;
+}
+
+.digital-data-window-badge {
+  font-size: 8.5px;
+  font-weight: 800;
+  font-family: var(--font-mono, monospace);
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  letter-spacing: 0.3px;
+}
+
+.timeline-time-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.time-marker-badge {
+  font-size: 9px;
+  font-weight: 800;
+  font-family: var(--font-mono, monospace);
+  color: #38bdf8;
+  background: rgba(14, 165, 233, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+@media (max-width: 850px) {
+  .airport-weather-widget {
+    top: 10px;
+    left: 10px;
+    width: 250px;
+    padding: 8px 10px;
+  }
+  .weather-widget-grid {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+}
+
+

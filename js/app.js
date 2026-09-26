@@ -361,28 +361,48 @@ function initTaxiwayDirectionsUI() {
     });
   }
 
+  // Ensure modal is strictly hidden initially
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.style.display = "none";
+  }
+
+  const closeModal = () => {
+    if (modal) {
+      modal.classList.add("hidden");
+      modal.style.display = "none";
+    }
+  };
+
   if (btnOpen) {
     btnOpen.addEventListener("click", () => {
       renderCorridorRows();
-      if (modal) modal.classList.remove("hidden");
+      if (modal) {
+        modal.classList.remove("hidden");
+        modal.style.display = "flex";
+      }
     });
   }
   if (btnClose) {
-    btnClose.addEventListener("click", () => {
-      if (modal) modal.classList.add("hidden");
-    });
+    btnClose.addEventListener("click", closeModal);
   }
   if (modal) {
     modal.addEventListener("click", (e) => {
-      if (e.target === modal) modal.classList.add("hidden");
+      if (e.target === modal) closeModal();
     });
   }
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal && !modal.classList.contains("hidden")) {
+      closeModal();
+    }
+  });
+
   if (btnApply) {
     btnApply.addEventListener("click", () => {
       if (window.TaxiwayDirectionManager) {
         window.TaxiwayDirectionManager.rebuildSystemRoutes();
       }
-      if (modal) modal.classList.add("hidden");
+      closeModal();
       showToast("Tüm uçuş rotaları belirlenen taksi yolu akış yönlerine göre güncellendi.");
     });
   }
@@ -433,6 +453,156 @@ function initTaxiwayDirectionsUI() {
     });
   }
 }
+
+/**
+ * Live Airport Weather & Wind Telemetry Service (Open-Meteo Aviation Feed)
+ */
+const AirportWeatherService = {
+  activeIcao: "LTFM",
+  cache: new Map(),
+
+  async fetchWeather(icao = currentIcao) {
+    icao = (icao === "LTFM") ? "LTFM" : "LTFJ";
+    this.activeIcao = icao;
+    const isLTFM = (icao === "LTFM");
+    const lat = isLTFM ? 41.26 : 40.90;
+    const lon = isLTFM ? 28.74 : 29.31;
+
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure&timezone=Europe%2FIstanbul`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Weather fetch status ${res.status}`);
+      const data = await res.json();
+      if (!data.current) throw new Error("No current weather data");
+
+      const weather = this.parseWeatherData(icao, data.current);
+      this.cache.set(icao, weather);
+      this.updateUI(weather);
+    } catch (err) {
+      console.warn(`[WeatherService] Live API fetch failed for ${icao}, using realistic METAR fallback:`, err);
+      const fallback = this.getFallbackWeather(icao);
+      this.updateUI(fallback);
+    }
+  },
+
+  parseWeatherData(icao, cur) {
+    const isLTFM = (icao === "LTFM");
+    const temp = Math.round(cur.temperature_2m ?? 20);
+    const humidity = cur.relative_humidity_2m ?? 70;
+    const precipProb = cur.precipitation_probability !== undefined ? cur.precipitation_probability : 0;
+    const precip = cur.precipitation || 0;
+    const windSpeedKmh = cur.wind_speed_10m || 15;
+    const windSpeedKt = Math.round(windSpeedKmh * 0.539957);
+    const windDir = Math.round(cur.wind_direction_10m ?? 60);
+    const qnh = Math.round(cur.surface_pressure ? cur.surface_pressure + 13 : 1016);
+
+    const windName = this.getWindCompass(windDir);
+    const cond = this.getWeatherCondition(cur.weather_code ?? 3);
+
+    // Crosswind / Headwind calculation for active runway
+    const rwyHdg = isLTFM ? 160 : 60;
+    const windAngleRad = Math.abs(windDir - rwyHdg) * (Math.PI / 180);
+    const headwindKt = Math.round(windSpeedKt * Math.cos(windAngleRad));
+    const crosswindKt = Math.round(Math.abs(windSpeedKt * Math.sin(windAngleRad)));
+
+    const windCompText = headwindKt >= 0 
+      ? `Pist ${isLTFM ? '16R' : '06L'} Karşı: ${headwindKt} KT | Yan: ${crosswindKt} KT` 
+      : `Pist ${isLTFM ? '35R' : '24R'} Karşı: ${Math.abs(headwindKt)} KT | Yan: ${crosswindKt} KT`;
+
+    return {
+      icao,
+      name: isLTFM ? "LTFM · İstanbul Havalimanı" : "LTFJ · Sabiha Gökçen",
+      temp: `${temp}°C`,
+      humidity: `%${humidity}`,
+      precipProb: `%${precipProb}`,
+      precipText: precip > 0 ? `${precip.toFixed(1)} mm / Yağışlı` : "0.0 mm / Yağışsız",
+      windSpeedKt,
+      windDir,
+      windText: `${String(windDir).padStart(3, "0")}° / ${windSpeedKt} KT (${windName})`,
+      windComp: windCompText,
+      pressure: `${qnh} hPa (QNH)`,
+      surfacePressure: `Yüzey: ${Math.round(cur.surface_pressure || 1003)} hPa`,
+      condition: cond.text,
+      icon: cond.icon,
+      flightCat: (precipProb > 60 || (cur.weather_code && cur.weather_code >= 61)) ? "IFR" : (precipProb > 30 ? "MVFR" : "VFR")
+    };
+  },
+
+  getFallbackWeather(icao) {
+    const isLTFM = (icao === "LTFM");
+    return {
+      icao,
+      name: isLTFM ? "LTFM · İstanbul Havalimanı" : "LTFJ · Sabiha Gökçen",
+      temp: isLTFM ? "20°C" : "19°C",
+      humidity: "%73",
+      precipProb: "%0",
+      precipText: "0.0 mm / Yağışsız",
+      windSpeedKt: 9,
+      windDir: 60,
+      windText: "060° / 09 KT (Poyraz)",
+      windComp: "Pist 16R Karşı Rüzgar (Uygun)",
+      pressure: "1016 hPa (QNH)",
+      surfacePressure: "Yüzey: 1003 hPa",
+      condition: "Parçalı Bulutlu",
+      icon: "⛅",
+      flightCat: "VFR"
+    };
+  },
+
+  getWindCompass(deg) {
+    if (deg >= 22.5 && deg < 67.5) return "Poyraz";
+    if (deg >= 67.5 && deg < 112.5) return "Gündoğusu";
+    if (deg >= 112.5 && deg < 157.5) return "Keşişleme";
+    if (deg >= 157.5 && deg < 202.5) return "Kıble";
+    if (deg >= 202.5 && deg < 247.5) return "Lodos";
+    if (deg >= 247.5 && deg < 292.5) return "Günbatısı";
+    if (deg >= 292.5 && deg < 337.5) return "Karayel";
+    return "Yıldız";
+  },
+
+  getWeatherCondition(code) {
+    if (code === 0) return { text: "Açık / Güneşli", icon: "☀️" };
+    if (code === 1 || code === 2) return { text: "Az Bulutlu", icon: "🌤️" };
+    if (code === 3) return { text: "Parçalı Bulutlu", icon: "⛅" };
+    if (code === 45 || code === 48) return { text: "Puslu / Sisli", icon: "🌫️" };
+    if (code >= 51 && code <= 55) return { text: "Çisenti Yağış", icon: "🌦️" };
+    if (code >= 61 && code <= 65) return { text: "Hafif Yağmur", icon: "🌧️" };
+    if (code >= 71 && code <= 77) return { text: "Kar Yağışlı", icon: "🌨️" };
+    if (code >= 80 && code <= 82) return { text: "Sağanak Yağış", icon: "⛈️" };
+    if (code >= 95) return { text: "Gök Gürültülü Fırtına", icon: "🌩️" };
+    return { text: "Parçalı Bulutlu", icon: "⛅" };
+  },
+
+  updateUI(w) {
+    const elStation = document.getElementById("weatherStationIcao");
+    const elCond = document.getElementById("weatherCondition");
+    const elIcon = document.getElementById("weatherIcon");
+    const elCat = document.getElementById("weatherFlightCat");
+    const elWind = document.getElementById("weatherWind");
+    const elWindComp = document.getElementById("weatherWindComp");
+    const elPrecipProb = document.getElementById("weatherPrecipProb");
+    const elPrecipAmt = document.getElementById("weatherPrecipAmount");
+    const elHum = document.getElementById("weatherHumidity");
+    const elQnh = document.getElementById("weatherQNH");
+    const elTempMinMax = document.getElementById("weatherTempMinMax");
+
+    if (elStation) elStation.textContent = w.icao;
+    if (elCond) elCond.textContent = `${w.temp} · ${w.condition}`;
+    if (elIcon) elIcon.textContent = w.icon;
+    if (elCat) {
+      elCat.textContent = w.flightCat;
+      elCat.className = `weather-badge-vfr ${w.flightCat.toLowerCase()}`;
+    }
+    if (elWind) elWind.textContent = w.windText;
+    if (elWindComp) elWindComp.textContent = w.windComp;
+    if (elPrecipProb) elPrecipProb.textContent = `${w.precipProb} İhtimal`;
+    if (elPrecipAmt) elPrecipAmt.textContent = w.precipText;
+    if (elHum) elHum.textContent = `Nem: ${w.humidity}`;
+    if (elQnh) elQnh.textContent = w.pressure;
+    if (elTempMinMax) elTempMinMax.textContent = w.surfacePressure;
+  }
+};
+window.AirportWeatherService = AirportWeatherService;
 
 /**
  * Setup Live Aircraft HUD Controls
@@ -811,6 +981,15 @@ function setupTimelineControls() {
   const slider = document.getElementById("timelineSlider");
   const clock = document.getElementById("digitalClock");
 
+  // Format real-world date above clock
+  const now = new Date();
+  const dateFormatted = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' }).format(now);
+  const digitalDateEl = document.getElementById("digitalDate");
+  if (digitalDateEl) digitalDateEl.textContent = `📅 ${dateFormatted}`;
+
+  if (slider) slider.value = Math.floor(trafficSim.simSeconds);
+  if (clock) clock.textContent = trafficSim.formatTime(trafficSim.simSeconds);
+
   btnPlay.addEventListener("click", () => {
     if (trafficSim.isPlaying) {
       trafficSim.pause();
@@ -927,6 +1106,10 @@ async function loadAirport(icao) {
 
     if (window.TaxiwayDirectionManager) {
       window.TaxiwayDirectionManager.refreshOverlay();
+    }
+
+    if (window.AirportWeatherService) {
+      window.AirportWeatherService.fetchWeather(icao);
     }
 
     if (typeof updateFlightFilterBadges === "function") {

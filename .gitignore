@@ -15,3 +15,7 @@ inspect_ltfm_taxiways.py
 .idea/
 *.swp
 *.swo
+
+# Raw dump data
+data/raw_fr24_*.json
+
