@@ -11,6 +11,43 @@ tz = datetime.timezone(datetime.timedelta(hours=3))
 today_start_ts = datetime.datetime(2026, 9, 26, 0, 0, 0, tzinfo=tz).timestamp()
 today_end_ts = datetime.datetime(2026, 9, 26, 21, 0, 0, tzinfo=tz).timestamp()
 
+CALLSIGN_TO_AIRLINE = {
+    'THY': ('THY', 'Türk Hava Yolları'), 'TK': ('THY', 'Türk Hava Yolları'),
+    'AJT': ('AJT', 'AJet'), 'VF': ('AJT', 'AJet'),
+    'PGT': ('PGT', 'Pegasus Airlines'), 'PC': ('PGT', 'Pegasus Airlines'),
+    'SXS': ('SXS', 'SunExpress'), 'XQ': ('SXS', 'SunExpress'),
+    'DLH': ('DLH', 'Lufthansa'), 'LH': ('DLH', 'Lufthansa'),
+    'AFR': ('AFR', 'Air France'), 'AF': ('AFR', 'Air France'),
+    'KLM': ('KLM', 'KLM Royal Dutch Airlines'), 'KL': ('KLM', 'KLM Royal Dutch Airlines'),
+    'BAW': ('BAW', 'British Airways'), 'BA': ('BAW', 'British Airways'),
+    'UAE': ('UAE', 'Emirates'), 'EK': ('UAE', 'Emirates'),
+    'QTR': ('QTR', 'Qatar Airways'), 'QR': ('QTR', 'Qatar Airways'),
+    'FDB': ('FDB', 'Flydubai'), 'FZ': ('FDB', 'Flydubai'),
+    'WZZ': ('WZZ', 'Wizz Air'), 'W6': ('WZZ', 'Wizz Air'),
+    'AFL': ('AFL', 'Aeroflot'), 'SU': ('AFL', 'Aeroflot'),
+    'PBD': ('PBD', 'Pobeda'), 'DP': ('PBD', 'Pobeda'),
+    'SVA': ('SVA', 'Saudia'), 'SV': ('SVA', 'Saudia'),
+    'MSR': ('MSR', 'EgyptAir'), 'MS': ('MSR', 'EgyptAir'),
+    'RJA': ('RJA', 'Royal Jordanian'), 'RJ': ('RJA', 'Royal Jordanian'),
+    'AEE': ('AEE', 'Aegean Airlines'), 'A3': ('AEE', 'Aegean Airlines'),
+    'DAH': ('DAH', 'Air Algerie'), 'AH': ('DAH', 'Air Algerie'),
+    'LOT': ('LOT', 'LOT Polish Airlines'), 'LO': ('LOT', 'LOT Polish Airlines'),
+    'ROT': ('ROT', 'Tarom'), 'RO': ('ROT', 'Tarom'),
+    'UZB': ('UZB', 'Uzbekistan Airways'), 'HY': ('UZB', 'Uzbekistan Airways'),
+    'ASL': ('ASL', 'Air Serbia'), 'JU': ('ASL', 'Air Serbia'),
+    'MEA': ('MEA', 'Middle East Airlines'), 'ME': ('MEA', 'Middle East Airlines'),
+    'AHY': ('AHY', 'Azerbaijan Airlines'), 'J2': ('AHY', 'Azerbaijan Airlines'),
+    'KZR': ('KZR', 'Air Astana'), 'KC': ('KZR', 'Air Astana'),
+    'CSN': ('CSN', 'China Southern Airlines'), 'CZ': ('CSN', 'China Southern Airlines'),
+    'FDX': ('FDX', 'FedEx'), 'FX': ('FDX', 'FedEx'),
+    'KNE': ('KNE', 'Flynas'), 'XY': ('KNE', 'Flynas'),
+    'TBZ': ('TBZ', 'ATA Airlines'), 'I3': ('TBZ', 'ATA Airlines'),
+    'MNB': ('MNB', 'MNG Airlines'), 'MB': ('MNB', 'MNG Airlines'),
+    'IRB': ('IRB', 'Iran Airtour'), 'B9': ('IRB', 'Iran Airtour'),
+    'CPN': ('CPN', 'Caspian Airlines'), 'RV': ('CPN', 'Caspian Airlines'),
+    'TRA': ('TRA', 'Transavia'), 'HV': ('TRA', 'Transavia')
+}
+
 def map_model(code, text):
     c = (code or '').strip().upper()
     t = (text or '').strip().upper()
@@ -53,11 +90,29 @@ def extract_flight(item, kind, idx):
     sec_of_day = dt.hour * 3600 + dt.minute * 60 + dt.second
     time_str = dt.strftime('%H:%M')
     
-    airline_data = fl.get('airline', {}) or {}
-    airline_name = airline_data.get('name') or 'Türk Hava Yolları'
-    airline_code = (airline_data.get('code') or {}).get('icao') or (airline_data.get('code') or {}).get('iata') or 'THY'
+    airline_data = fl.get('airline') or fl.get('owner') or {}
+    airline_name = airline_data.get('name') or ''
+    airline_code = (airline_data.get('code') or {}).get('icao') or (airline_data.get('code') or {}).get('iata') or ''
+    
     if 'Turkish' in airline_name:
         airline_code = 'THY'
+        airline_name = 'Türk Hava Yolları'
+    elif not airline_code:
+        p3 = (callsign[:3] if len(callsign) >= 3 else '').upper()
+        p2 = (callsign[:2] if len(callsign) >= 2 else '').upper()
+        f2 = (fn_def[:2] if len(fn_def) >= 2 else '').upper()
+        if p3 in CALLSIGN_TO_AIRLINE:
+            airline_code, default_name = CALLSIGN_TO_AIRLINE[p3]
+            airline_name = airline_name or default_name
+        elif p2 in CALLSIGN_TO_AIRLINE:
+            airline_code, default_name = CALLSIGN_TO_AIRLINE[p2]
+            airline_name = airline_name or default_name
+        elif f2 in CALLSIGN_TO_AIRLINE:
+            airline_code, default_name = CALLSIGN_TO_AIRLINE[f2]
+            airline_name = airline_name or default_name
+        else:
+            airline_code = p3 or 'GEN'
+            airline_name = airline_name or 'Genel Havacılık'
     
     aircraft_data = fl.get('aircraft', {}) or {}
     model_data = aircraft_data.get('model', {}) or {}

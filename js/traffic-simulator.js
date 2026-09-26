@@ -674,6 +674,7 @@ class GroundTrafficSimulator {
     if (runSeparation) {
       this.lastSeparationCheckTime = now;
       this.checkGroundSeparation(activeFlights, rwyActive);
+      this.checkCongestionAndDeadlocks(activeFlights);
     }
 
     // 4. Viewport/Frustum query for GPU culling
@@ -883,6 +884,121 @@ class GroundTrafficSimulator {
       return fA.startTime > fB.startTime;
     }
     return String(fA.id) > String(fB.id);
+  }
+
+  /**
+   * ATC Traffic Gridlock & Deadlock Detection Engine
+   * Detects when >= 4 aircraft queue up in separation hold on taxiways, alerts the user,
+   * pinpoints the bottleneck taxiway, and provides a 1-click recommended fix.
+   */
+  checkCongestionAndDeadlocks(activeFlights) {
+    const now = performance.now();
+    if (now - (this.lastCongestionCheckTime || 0) < 1800) return;
+    this.lastCongestionCheckTime = now;
+
+    const queued = activeFlights.filter(f => f.isQueued || f.phase === "queued" || (f.speed === 0 && (f.phase === "taxi_in" || f.phase === "taxi_out" || f.phase === "holding")));
+    if (queued.length < 4) {
+      this.hideCongestionAlert();
+      return;
+    }
+
+    // Cluster queued aircraft within 130 meters of each other
+    const clusters = [];
+    const visited = new Set();
+
+    for (let i = 0; i < queued.length; i++) {
+      if (visited.has(i)) continue;
+      const f1 = queued[i];
+      const cluster = [f1];
+      visited.add(i);
+
+      for (let j = i + 1; j < queued.length; j++) {
+        if (visited.has(j)) continue;
+        const f2 = queued[j];
+        const dist = this.calcDistance(f1.lat, f1.lon, f2.lat, f2.lon);
+        if (dist <= 140) {
+          cluster.push(f2);
+          visited.add(j);
+        }
+      }
+
+      if (cluster.length >= 4) {
+        clusters.push(cluster);
+      }
+    }
+
+    if (clusters.length === 0) {
+      this.hideCongestionAlert();
+      return;
+    }
+
+    // Sort by cluster size descending
+    clusters.sort((a, b) => b.length - a.length);
+    const targetCluster = clusters[0];
+    const count = targetCluster.length;
+
+    // Identify taxiway bottleneck
+    let twyName = "TWY B1";
+    for (const f of targetCluster) {
+      if (f.currentTwyName) {
+        const raw = f.currentTwyName.split(" ")[0].replace(/[\(\),]/g, "");
+        if (raw && !raw.includes("Approach") && !raw.includes("Stand")) {
+          twyName = raw;
+          break;
+        }
+      }
+    }
+
+    const flightNames = targetCluster.slice(0, 4).map(f => f.callsign).join(", ");
+    this.showCongestionAlert(twyName, count, flightNames);
+  }
+
+  showCongestionAlert(twyName, count, flightNames) {
+    const alertEl = document.getElementById("atcCongestionAlert");
+    const descEl = document.getElementById("congestionDescText");
+    const recEl = document.getElementById("congestionRecText");
+    const btnFix = document.getElementById("btnApplyCongestionFix");
+
+    if (!alertEl) return;
+    this.activeCongestedTwy = twyName;
+
+    alertEl.style.display = "flex";
+    alertEl.classList.remove("hidden");
+
+    if (descEl) {
+      descEl.innerHTML = `<b>${twyName}</b> üzerinde <b>${count} uçak</b> (${flightNames}${count > 4 ? ' vb.' : ''}) güvenlik ayrımı nedeniyle uzun süredir beklemede.`;
+    }
+    if (recEl) {
+      recEl.innerHTML = `💡 <b>Önerilen Düzeltme:</b> ${twyName} taksi yolunun yönünü <b>Çift Yön</b> yaparak trafik akışını rahatlatın.`;
+    }
+    if (btnFix) {
+      btnFix.textContent = `⚡ Önerilen Düzeltmeyi Uygula (${twyName}'i Çift Yön Yap)`;
+      btnFix.onclick = () => {
+        this.resolveCongestion(twyName);
+      };
+    }
+  }
+
+  hideCongestionAlert() {
+    const alertEl = document.getElementById("atcCongestionAlert");
+    if (alertEl) alertEl.style.display = "none";
+  }
+
+  resolveCongestion(twyName) {
+    if (window.TaxiwayDirectionManager) {
+      window.TaxiwayDirectionManager.applyDirToAllRef(twyName, "BIDIRECTIONAL");
+    }
+    this.flights.forEach(f => {
+      f.isQueued = false;
+      f.queueReason = null;
+      f.conflictWith = null;
+      f.delaySeconds = 0;
+    });
+    this.rebuildFlightTrajectories();
+    this.hideCongestionAlert();
+    if (typeof showToast === "function") {
+      showToast(`✅ ${twyName} çift yönlü serbest akışa açıldı. Trafik akışı normale döndü!`);
+    }
   }
 
   getRemainingPath(flight, time) {

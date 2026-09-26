@@ -45,6 +45,7 @@ class TaxiwayGraphRouter {
         const coords = f.geometry.coordinates;
         const ref = f.properties.ref || "";
         const isCurved = (coords.length >= 4 && !ref);
+        const featId = f.properties?.id ? String(f.properties.id) : (f.id ? String(f.id) : `twy_${taxiwayCount}`);
         if (coords.length >= 2) {
           taxiwayCount++;
           for (let i = 0; i < coords.length - 1; i++) {
@@ -59,8 +60,8 @@ class TaxiwayGraphRouter {
               if (!this.adj.has(u)) this.adj.set(u, []);
               if (!this.adj.has(v)) this.adj.set(v, []);
 
-              this.adj.get(u).push({ target: v, dist, ref, edgeKey, isCurved });
-              this.adj.get(v).push({ target: u, dist, ref, edgeKey, isCurved });
+              this.adj.get(u).push({ target: v, dist, ref, edgeKey, isCurved, featId, forward: true });
+              this.adj.get(v).push({ target: u, dist, ref, edgeKey, isCurved, featId, forward: false });
             }
           }
         }
@@ -165,7 +166,7 @@ class TaxiwayGraphRouter {
 
         // 1. One-Way Directional Flow Rule
         if (window.TaxiwayDirectionManager) {
-          if (!window.TaxiwayDirectionManager.isEdgeAllowed(pU, pV)) {
+          if (!window.TaxiwayDirectionManager.isEdgeAllowed(pU, pV, edge)) {
             continue; // Movement is strictly against the designated one-way flow!
           }
         }
@@ -274,13 +275,29 @@ class TaxiwayGraphRouter {
         : rwyCfg.allExits;
       arrRwyName = rwyCfg.arrRunwayData.name;
 
-      // Strict Mandatory Departure Entry Taxiway
-      const mandatoryEntry = rwyCfg.mandatoryDepEntry;
-      rwyTakeoffHold = mandatoryEntry.holdPos;
-      rwyTakeoffThreshold = mandatoryEntry.lineupPos;
+      // Dynamic Departure Entry Selection: Distribute traffic across all available entries to eliminate bottlenecks
+      const depEntries = (rwyCfg.depRunwayData.entries && rwyCfg.depRunwayData.entries.length > 0)
+        ? rwyCfg.depRunwayData.entries
+        : (rwyCfg.mandatoryDepEntry ? [rwyCfg.mandatoryDepEntry] : [{ name: "Threshold", holdPos: rwyCfg.depRunwayData.threshold, lineupPos: rwyCfg.depRunwayData.threshold }]);
+
+      let bestEntry = depEntries[0];
+      let bestEntryScore = Infinity;
+      for (let i = 0; i < depEntries.length; i++) {
+        const ent = depEntries[i];
+        const directDist = this.calcDistance(standCoord[0], standCoord[1], ent.holdPos[0], ent.holdPos[1]);
+        const usage = this.edgeUsageMap.get(ent.id) || 0;
+        const score = directDist + (usage * 120) + ((flightIndex % depEntries.length === i) ? -40 : 0);
+        if (score < bestEntryScore) {
+          bestEntryScore = score;
+          bestEntry = ent;
+        }
+      }
+
+      rwyTakeoffHold = bestEntry.holdPos;
+      rwyTakeoffThreshold = bestEntry.lineupPos;
       rwyLiftoff = rwyCfg.depRunwayData.liftoff;
       depRwyName = rwyCfg.depRunwayData.name;
-      mandatoryEntryName = mandatoryEntry.name;
+      mandatoryEntryName = bestEntry.name;
     } else if (isLTFM) {
       rwyThreshold = [41.2985855, 28.7067348]; // 16R
       rwyTouchdown = [41.2879172, 28.7069417];

@@ -304,152 +304,79 @@ function initWelcomeModal() {
 }
 
 /**
- * Setup Taxiway Directions & One-Way Traffic Flow Modal Controls
+ * Setup Taxiway Directions & Interactive Flow Editor Controls
  */
 function initTaxiwayDirectionsUI() {
-  const modal = document.getElementById("taxiwayDirModal");
-  const btnOpen = document.getElementById("btnTaxiwayDirModalOpen");
-  const btnClose = document.getElementById("btnCloseDirModal");
-  const btnApply = document.getElementById("btnApplyDirections");
+  const btnHeader = document.getElementById("btnTaxiwayDirModalOpen");
+  const btnToggleMode = document.getElementById("btnToggleTaxiEditMode");
+  const btnCloseToolbar = document.getElementById("btnCloseTaxiEditToolbar");
+  const btnFinishEdit = document.getElementById("btnFinishTaxiEdit");
+  const btnResetAll = document.getElementById("btnResetAllTaxiDirs");
   const btnPresetAlt = document.getElementById("btnPresetAlternating");
   const btnPresetRev = document.getElementById("btnPresetReverse");
-  const btnPresetBidir = document.getElementById("btnPresetBidir");
-  const chkOverlay = document.getElementById("chkShowFlowArrows");
-  const container = document.getElementById("corridorsContainer");
-  const headerSummary = document.getElementById("headerTaxiDirSummary");
 
-  function renderCorridorRows() {
-    if (!container || !window.TaxiwayDirectionManager) return;
-    const corridors = window.TaxiwayDirectionManager.getCorridors(currentIcao);
-    if (!corridors || corridors.length === 0) {
-      container.innerHTML = `<div style="padding:15px; color:#94a3b8; font-size:12px; text-align:center;">Bu havalimanı için tanımlı paralel hat bulunmuyor.</div>`;
-      return;
-    }
-
-    container.innerHTML = corridors.map(c => {
-      const isEast = (c.direction === "WEST_TO_EAST");
-      const isWest = (c.direction === "EAST_TO_WEST");
-      const isBidir = (c.direction === "BIDIRECTIONAL");
-
-      return `
-        <div class="corridor-card" data-corridor-id="${c.id}">
-          <div class="corridor-header">
-            <span class="corridor-name">🛣️ ${c.name}</span>
-            <span class="corridor-badge ${isEast ? 'dir-east' : (isWest ? 'dir-west' : 'dir-bidir')}">
-              ${isEast ? '➔ Batıdan Doğuya (W➔E)' : (isWest ? '⬅ Doğudan Batıya (E➔W)' : '⬌ Çift Yön')}
-            </span>
-          </div>
-          <div class="corridor-actions">
-            <button class="corridor-btn ${isEast ? 'active' : ''}" data-dir="WEST_TO_EAST">➔ Batıdan Doğuya</button>
-            <button class="corridor-btn ${isWest ? 'active' : ''}" data-dir="EAST_TO_WEST">⬅ Doğudan Batıya</button>
-            <button class="corridor-btn ${isBidir ? 'active' : ''}" data-dir="BIDIRECTIONAL">⬌ Çift Yön</button>
-          </div>
-        </div>
-      `;
-    }).join("");
-
-    container.querySelectorAll(".corridor-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const card = e.target.closest(".corridor-card");
-        if (!card) return;
-        const cId = card.dataset.corridorId;
-        const dir = e.target.dataset.dir;
-        window.TaxiwayDirectionManager.setCorridorDirection(cId, dir);
-        renderCorridorRows();
-        showToast("Taksi yolu yönü güncellendi ve rotalar hesaplandı.");
-      });
-    });
-  }
-
-  // Ensure modal is strictly hidden initially
-  if (modal) {
-    modal.classList.add("hidden");
-    modal.style.display = "none";
-  }
-
-  const closeModal = () => {
-    if (modal) {
-      modal.classList.add("hidden");
-      modal.style.display = "none";
-    }
-  };
-
-  if (btnOpen) {
-    btnOpen.addEventListener("click", () => {
-      renderCorridorRows();
-      if (modal) {
-        modal.classList.remove("hidden");
-        modal.style.display = "flex";
-      }
-    });
-  }
-  if (btnClose) {
-    btnClose.addEventListener("click", closeModal);
-  }
-  if (modal) {
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) closeModal();
-    });
-  }
-  window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && modal && !modal.classList.contains("hidden")) {
-      closeModal();
-    }
-  });
-
-  if (btnApply) {
-    btnApply.addEventListener("click", () => {
+  if (btnHeader) {
+    btnHeader.addEventListener("click", () => {
       if (window.TaxiwayDirectionManager) {
-        window.TaxiwayDirectionManager.rebuildSystemRoutes();
+        window.TaxiwayDirectionManager.toggleEditMode();
       }
-      closeModal();
-      showToast("Tüm uçuş rotaları belirlenen taksi yolu akış yönlerine göre güncellendi.");
+    });
+  }
+
+  if (btnToggleMode) {
+    btnToggleMode.addEventListener("click", () => {
+      if (window.TaxiwayDirectionManager) {
+        window.TaxiwayDirectionManager.toggleEditMode();
+      }
+    });
+  }
+
+  if (btnCloseToolbar) {
+    btnCloseToolbar.addEventListener("click", () => {
+      if (window.TaxiwayDirectionManager) {
+        window.TaxiwayDirectionManager.setEditMode(false);
+      }
+    });
+  }
+
+  if (btnFinishEdit) {
+    btnFinishEdit.addEventListener("click", () => {
+      if (window.TaxiwayDirectionManager) {
+        window.TaxiwayDirectionManager.setEditMode(false);
+      }
+    });
+  }
+
+  if (btnResetAll) {
+    btnResetAll.addEventListener("click", () => {
+      if (window.TaxiwayDirectionManager) {
+        window.TaxiwayDirectionManager.presetResetAll();
+      }
     });
   }
 
   if (btnPresetAlt) {
     btnPresetAlt.addEventListener("click", () => {
       if (window.TaxiwayDirectionManager) {
-        window.TaxiwayDirectionManager.setPreset("ALTERNATING");
-        document.querySelectorAll(".btn-preset").forEach(b => b.classList.remove("active"));
-        btnPresetAlt.classList.add("active");
-        if (headerSummary) headerSummary.textContent = "Alternatif Akış";
-        renderCorridorRows();
-        showToast("Alternatif akış şablonu uygulandı (W➔E / E➔W).");
-      }
-    });
-  }
-  if (btnPresetRev) {
-    btnPresetRev.addEventListener("click", () => {
-      if (window.TaxiwayDirectionManager) {
-        window.TaxiwayDirectionManager.setPreset("REVERSE_ALTERNATING");
-        document.querySelectorAll(".btn-preset").forEach(b => b.classList.remove("active"));
-        btnPresetRev.classList.add("active");
-        if (headerSummary) headerSummary.textContent = "Ters Alternatif";
-        renderCorridorRows();
-        showToast("Ters alternatif akış şablonu uygulandı (E➔W / W➔E).");
-      }
-    });
-  }
-  if (btnPresetBidir) {
-    btnPresetBidir.addEventListener("click", () => {
-      if (window.TaxiwayDirectionManager) {
-        window.TaxiwayDirectionManager.setPreset("BIDIRECTIONAL");
-        document.querySelectorAll(".btn-preset").forEach(b => b.classList.remove("active"));
-        btnPresetBidir.classList.add("active");
-        if (headerSummary) headerSummary.textContent = "Çift Yön";
-        renderCorridorRows();
-        showToast("Tüm hatlar çift yönlü akışa açıldı.");
+        window.TaxiwayDirectionManager.presetAlternating();
       }
     });
   }
 
-  if (chkOverlay) {
-    chkOverlay.addEventListener("change", (e) => {
+  if (btnPresetRev) {
+    btnPresetRev.addEventListener("click", () => {
       if (window.TaxiwayDirectionManager) {
-        window.TaxiwayDirectionManager.isOverlayVisible = e.target.checked;
-        window.TaxiwayDirectionManager.refreshOverlay();
+        window.TaxiwayDirectionManager.presetReverse();
       }
+    });
+  }
+
+  // Bind congestion alert dismiss button
+  const btnDismissCongestion = document.getElementById("btnDismissCongestion");
+  if (btnDismissCongestion) {
+    btnDismissCongestion.addEventListener("click", () => {
+      const alertEl = document.getElementById("atcCongestionAlert");
+      if (alertEl) alertEl.style.display = "none";
     });
   }
 }
@@ -2213,95 +2140,69 @@ function applyRunwayConfigFromModal() {
 function updateRunwayHeaderSummary(cfg) {
   const el = document.getElementById("headerRunwaySummary");
   if (!el || !cfg) return;
-  el.textContent = `${cfg.arrRunway} İniş / ${cfg.depRunway} Kalkış (${cfg.mandatoryDepEntry?.name || 'Full'})`;
+  const depHdg = cfg.depRunwayData?.heading || 354;
+  const dir = (depHdg >= 300 || depHdg <= 60) ? "Kuzey" : "Güney";
+  el.textContent = `${cfg.arrRunway} İniş / ${cfg.depRunway} Kalkış (${dir} Yönü)`;
 }
 
 function renderRunwayATCIndicators(cfg) {
   if (!runwayOverlayLayerGroup || !cfg) return;
   runwayOverlayLayerGroup.clearLayers();
 
-  // 1. Mandatory Departure Entry Marker (Outbound planes MUST strictly enter here)
-  const mandatoryEntry = cfg.mandatoryDepEntry;
-  if (mandatoryEntry && mandatoryEntry.holdPos) {
-    const entryHtml = `
-      <div class="atc-mandatory-entry-marker">
-        <div class="entry-pulse"></div>
-        <div class="entry-icon">⛔</div>
-        <div class="entry-label">
-          <span class="entry-tag">ZORUNLU GİRİŞ</span>
-          <span class="entry-name">TWY ${mandatoryEntry.name}</span>
-        </div>
-      </div>
-    `;
-    const entryIcon = L.divIcon({
-      html: entryHtml,
-      className: "atc-entry-icon-wrap",
-      iconSize: [120, 36],
-      iconAnchor: [60, 18]
-    });
-    const entryMarker = L.marker(mandatoryEntry.holdPos, { icon: entryIcon, zIndexOffset: 2000 })
-      .bindTooltip(`<b>Zorunlu Kalkış Girişi: TWY ${mandatoryEntry.name}</b><br>${cfg.depRunwayData.name} pistine kalkışlar YALNIZCA bu taksi yolundan girebilir.<br><span style="color:#38bdf8;">👉 Değiştirmek İçin Tıklayın</span>`, { direction: "top", offset: [0, -15] })
-      .on("click", () => openRunwayModal());
-    runwayOverlayLayerGroup.addLayer(entryMarker);
-  }
-
-  // 2. Active Runway Exits (Inbound planes can exit from ANY allowed point)
-  if (cfg.allowedExits && cfg.allowedExits.length > 0) {
-    cfg.allowedExits.forEach(exit => {
-      const exitHtml = `
-        <div class="atc-exit-marker">
-          <span class="exit-dot"></span>
-          <span class="exit-name">${exit.name}</span>
-        </div>
-      `;
-      const exitIcon = L.divIcon({
-        html: exitHtml,
-        className: "atc-exit-icon-wrap",
-        iconSize: [60, 24],
-        iconAnchor: [30, 12]
-      });
-      const exitMarker = L.marker(exit.pos, { icon: exitIcon, zIndexOffset: 1500 })
-        .bindTooltip(`<b>İniş Çıkış Noktası: ${exit.name}</b><br>${exit.desc || 'Pist Çıkışı'}<br><i>İstenilen noktadan çıkış serbesttir</i><br><span style="color:#38bdf8;">👉 Ayarlamak İçin Tıklayın</span>`, { direction: "top", offset: [0, -10] })
-        .on("click", () => openRunwayModal());
-      runwayOverlayLayerGroup.addLayer(exitMarker);
-    });
-  }
-
-  // 3. Active Runway Direction Badges
-  if (cfg.arrRunwayData && cfg.arrRunwayData.touchdown) {
-    const arrHtml = `
-      <div class="atc-rwy-dir-badge arr">
-        🛬 İNİŞ: ${cfg.arrRunwayData.id} (${cfg.arrRunwayData.heading}°)
-      </div>
-    `;
-    const arrIcon = L.divIcon({
-      html: arrHtml,
-      className: "atc-rwy-badge-wrap",
-      iconSize: [120, 26],
-      iconAnchor: [60, 13]
-    });
-    const arrMarker = L.marker(cfg.arrRunwayData.touchdown, { icon: arrIcon, zIndexOffset: 1200 })
-      .bindTooltip(`<b>Aktif İniş Pisti: ${cfg.arrRunwayData.id}</b><br>Baş Açısı: ${cfg.arrRunwayData.heading}°<br><span style="color:#38bdf8;">👉 Değiştirmek İçin Tıklayın</span>`, { direction: "top" })
-      .on("click", () => openRunwayModal());
-    runwayOverlayLayerGroup.addLayer(arrMarker);
-  }
-
+  // 1. High-Visibility Departure Runway Plate on Map
   if (cfg.depRunwayData && cfg.depRunwayData.threshold) {
+    const depHdg = cfg.depRunwayData.heading || 354;
+    const depDirText = (depHdg >= 300 || depHdg <= 60) ? "KUZEYE DOĞRU" : "GÜNEYE DOĞRU";
     const depHtml = `
-      <div class="atc-rwy-dir-badge dep">
-        🛫 KALKIŞ: ${cfg.depRunwayData.id} (${cfg.depRunwayData.heading}°)
+      <div class="atc-rwy-plate dep" title="Kalkış Pisti: ${cfg.depRunwayData.name}">
+        <div class="rwy-plate-top">
+          <span class="rwy-plate-badge">🛫 KALKIŞ PİSTİ</span>
+          <span class="rwy-wind-chip">RÜZGAR UYUMLU</span>
+        </div>
+        <div class="rwy-plate-main">
+          <span class="rwy-plate-name">${cfg.depRunwayData.name}</span>
+          <span class="rwy-plate-heading">▲ ${depDirText} (${depHdg}°)</span>
+        </div>
       </div>
     `;
     const depIcon = L.divIcon({
       html: depHtml,
-      className: "atc-rwy-badge-wrap",
-      iconSize: [120, 26],
-      iconAnchor: [60, 13]
+      className: "atc-rwy-plate-container",
+      iconSize: [210, 56],
+      iconAnchor: [105, 28]
     });
-    const depMarker = L.marker(cfg.depRunwayData.threshold, { icon: depIcon, zIndexOffset: 1200 })
-      .bindTooltip(`<b>Aktif Kalkış Pisti: ${cfg.depRunwayData.id}</b><br>Baş Açısı: ${cfg.depRunwayData.heading}°<br>Zorunlu Giriş: TWY ${cfg.mandatoryDepEntry?.name}<br><span style="color:#38bdf8;">👉 Değiştirmek İçin Tıklayın</span>`, { direction: "top" })
+    const depMarker = L.marker(cfg.depRunwayData.threshold, { icon: depIcon, zIndexOffset: 2500 })
+      .bindTooltip(`<b>Aktif Kalkış Pisti: ${cfg.depRunwayData.name}</b><br>Kalkış Yönü: ${depDirText} (${depHdg}°)<br><span style="color:#38bdf8;">👉 Değiştirmek İçin Tıklayın</span>`, { direction: "top" })
       .on("click", () => openRunwayModal());
     runwayOverlayLayerGroup.addLayer(depMarker);
+  }
+
+  // 2. High-Visibility Arrival Runway Plate on Map
+  if (cfg.arrRunwayData && cfg.arrRunwayData.touchdown) {
+    const arrHdg = cfg.arrRunwayData.heading || 163;
+    const arrDirText = (arrHdg >= 300 || arrHdg <= 60) ? "KUZEYE DOĞRU" : "GÜNEYE DOĞRU";
+    const arrHtml = `
+      <div class="atc-rwy-plate arr" title="İniş Pisti: ${cfg.arrRunwayData.name}">
+        <div class="rwy-plate-top">
+          <span class="rwy-plate-badge">🛬 İNİŞ PİSTİ</span>
+          <span class="rwy-wind-chip">RÜZGAR UYUMLU</span>
+        </div>
+        <div class="rwy-plate-main">
+          <span class="rwy-plate-name">${cfg.arrRunwayData.name}</span>
+          <span class="rwy-plate-heading">▲ ${arrDirText} (${arrHdg}°)</span>
+        </div>
+      </div>
+    `;
+    const arrIcon = L.divIcon({
+      html: arrHtml,
+      className: "atc-rwy-plate-container",
+      iconSize: [210, 56],
+      iconAnchor: [105, 28]
+    });
+    const arrMarker = L.marker(cfg.arrRunwayData.touchdown, { icon: arrIcon, zIndexOffset: 2500 })
+      .bindTooltip(`<b>Aktif İniş Pisti: ${cfg.arrRunwayData.name}</b><br>İniş Yönü: ${arrDirText} (${arrHdg}°)<br><span style="color:#38bdf8;">👉 Değiştirmek İçin Tıklayın</span>`, { direction: "top" })
+      .on("click", () => openRunwayModal());
+    runwayOverlayLayerGroup.addLayer(arrMarker);
   }
 }
 

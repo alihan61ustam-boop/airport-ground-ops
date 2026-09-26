@@ -45,10 +45,10 @@
       </button>
 
       <!-- Taxiway Flow Directions Button -->
-      <button id="btnTaxiwayDirModalOpen" class="btn-runway-config btn-taxi-dir" title="Taksi Yolları Tek Yön Akış Yönetimi & Harita Gösterimi">
+      <button id="btnTaxiwayDirModalOpen" class="btn-runway-config btn-taxi-dir" title="Taksi Yolu Yön Düzenleme Modu (Aktif / Pasif)">
         <span class="rwy-icon">🔀</span>
         <span class="rwy-text">TAKSİ YÖNLERİ:</span>
-        <span id="headerTaxiDirSummary" class="rwy-summary">Alternatif Akış</span>
+        <span id="headerTaxiDirSummary" class="rwy-summary">DÜZENLE (PASİF)</span>
       </button>
 
       <!-- Status Indicator -->
@@ -116,6 +116,78 @@
             <span class="metric-val" id="weatherQNH">1016 hPa (QNH)</span>
             <span class="metric-sub" id="weatherTempMinMax">Yüzey: 1003 hPa</span>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating ATC Taxiway Direction Editor Toolbar -->
+    <div id="taxiwayEditToolbar" class="taxi-edit-toolbar" style="display: none;">
+      <div class="edit-toolbar-header">
+        <div class="toolbar-title-box">
+          <span class="toolbar-icon">🔀</span>
+          <div class="toolbar-title-text">
+            <span class="toolbar-heading">TAKSİ YÖNÜ DÜZENLEME</span>
+            <span class="toolbar-sub">Havalimanı Taksi Ağı Akış Tayini</span>
+          </div>
+        </div>
+        <div class="mode-toggle-box">
+          <button id="btnToggleTaxiEditMode" class="btn-mode-toggle active" title="Düzenleme Modunu Aç / Kapat">
+            <span class="mode-indicator-dot"></span>
+            <span id="txtEditModeStatus">AKTİF</span>
+          </button>
+          <button id="btnCloseTaxiEditToolbar" class="btn-toolbar-close" title="Kapat ve Pasife Al">✕</button>
+        </div>
+      </div>
+
+      <div class="edit-toolbar-body">
+        <div class="edit-instructions">
+          <span class="inst-icon">👆</span>
+          <div class="inst-content">
+            <strong>Nasıl Kullanılır?</strong>
+            <span>Haritadaki herhangi bir <b>turuncu taksi yoluna</b> tıklayın. Yön sırasıyla <b>İleri ➔</b>, <b>Geri ⬅</b> ve <b>Çift Yön ⇄</b> olarak değişir.</span>
+          </div>
+        </div>
+
+        <div class="edit-stats-row">
+          <div class="stat-badge">
+            <span class="stat-label">Özel Yönler:</span>
+            <span id="lblConfiguredCount" class="stat-val">0 Yol</span>
+          </div>
+          <button id="btnResetAllTaxiDirs" class="btn-reset-dirs" title="Tüm yolları çift yön yap">🔄 Tümünü Sıfırla</button>
+        </div>
+
+        <div class="edit-presets-row">
+          <span class="preset-label">Hızlı Şablonlar:</span>
+          <button id="btnPresetAlternating" class="btn-preset-chip" title="Paralel hatları Batı➔Doğu ve Doğu➔Batı dönüşümlü yap">⚡ Alternatif Akış</button>
+          <button id="btnPresetReverse" class="btn-preset-chip" title="Ters dönüşümlü akış">🔄 Ters Alternatif</button>
+        </div>
+      </div>
+
+      <div class="edit-toolbar-footer">
+        <button id="btnFinishTaxiEdit" class="btn-finish-edit">
+          ✔️ Düzenlemeyi Tamamla (Pasife Al)
+        </button>
+      </div>
+    </div>
+
+    <!-- ATC Dynamic Traffic Congestion & Gridlock Warning Banner -->
+    <div id="atcCongestionAlert" class="atc-congestion-alert hidden" style="display: none;">
+      <div class="congestion-alert-body">
+        <span class="alert-icon-pulsing">⚠️</span>
+        <div class="congestion-text-box">
+          <div class="congestion-title">SİMÜLASYONDA TRAFİK YIĞILMASI TESPİT EDİLDİ! TAKSİ YOLLARINI İNCELEYİN</div>
+          <div class="congestion-desc" id="congestionDescText">
+            <b>TWY B1</b> üzerinde <b>4'ten fazla uçak</b> güvenlik ayrımı nedeniyle uzun süredir beklemede.
+          </div>
+          <div class="congestion-recommendation" id="congestionRecText">
+            💡 <b>Önerilen Düzeltme:</b> Bu taksi yolunun yönünü <b>Çift Yön</b> yapın veya akış yönünü düzenleyin.
+          </div>
+        </div>
+        <div class="congestion-actions">
+          <button id="btnApplyCongestionFix" class="btn-congestion-fix">
+            ⚡ Önerilen Düzeltmeyi Uygula
+          </button>
+          <button id="btnDismissCongestion" class="btn-congestion-dismiss" title="Kapat">✕</button>
         </div>
       </div>
     </div>

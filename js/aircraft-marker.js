@@ -204,12 +204,289 @@ const AIRLINE_LIVERIES = {
         <polygon points="12,5 13.8,9 18,9 14.5,11.8 16,16 12,13.5 8,16 9.5,11.8 6,9 10.2,9" fill="#f59e0b"/>
       </svg>
     `
+  },
+  ROT: {
+    name: "Tarom",
+    code: "RO",
+    displayTag: "TAROM",
+    tailColor: "#00205b",
+    wingColor: "#ffc72c",
+    bodyColor: "#ffffff",
+    badgeBg: "#001845",
+    badgeBorder: "#ffc72c",
+    textColor: "#ffdd44",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#00205b" stroke="#ffc72c" stroke-width="1.3"/>
+        <path d="M 6,15 L 12,8 L 18,15 L 12,12 Z" fill="#ffc72c"/>
+      </svg>
+    `
+  },
+  AFR: {
+    name: "Air France",
+    code: "AF",
+    displayTag: "AIR FRANCE",
+    tailColor: "#002157",
+    wingColor: "#ed1c24",
+    bodyColor: "#ffffff",
+    badgeBg: "#001844",
+    badgeBorder: "#ed1c24",
+    textColor: "#ffffff",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#002157" stroke="#ffffff" stroke-width="1.3"/>
+        <path d="M 6,16 L 14,8 L 17,9 L 10,17 Z" fill="#ed1c24"/>
+      </svg>
+    `
+  },
+  KLM: {
+    name: "KLM Royal Dutch Airlines",
+    code: "KL",
+    displayTag: "KLM",
+    tailColor: "#00a1de",
+    wingColor: "#00a1de",
+    bodyColor: "#ffffff",
+    badgeBg: "#005580",
+    badgeBorder: "#00a1de",
+    textColor: "#ffffff",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#00a1de" stroke="#ffffff" stroke-width="1.3"/>
+        <path d="M 7,15 L 8,11 L 10,13 L 12,9 L 14,13 L 16,11 L 17,15 Z" fill="#ffffff"/>
+      </svg>
+    `
+  },
+  AFL: {
+    name: "Aeroflot",
+    code: "SU",
+    displayTag: "AEROFLOT",
+    tailColor: "#002b49",
+    wingColor: "#d52b1e",
+    bodyColor: "#cfd6df",
+    badgeBg: "#001d33",
+    badgeBorder: "#d52b1e",
+    textColor: "#ffffff",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#002b49" stroke="#d52b1e" stroke-width="1.3"/>
+        <path d="M 5,14 Q 12,8 19,14 Q 12,12 5,14 Z" fill="#d52b1e"/>
+      </svg>
+    `
+  },
+  SVA: {
+    name: "Saudia",
+    code: "SV",
+    displayTag: "SAUDIA",
+    tailColor: "#004b30",
+    wingColor: "#c29b38",
+    bodyColor: "#ffffff",
+    badgeBg: "#003320",
+    badgeBorder: "#c29b38",
+    textColor: "#fef08a",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#004b30" stroke="#c29b38" stroke-width="1.3"/>
+        <path d="M 12,6 L 12,18 M 8,14 L 16,14" stroke="#c29b38" stroke-width="1.5"/>
+      </svg>
+    `
+  },
+  MSR: {
+    name: "EgyptAir",
+    code: "MS",
+    displayTag: "EGYPTAIR",
+    tailColor: "#0c2340",
+    wingColor: "#b3995d",
+    bodyColor: "#ffffff",
+    badgeBg: "#071629",
+    badgeBorder: "#b3995d",
+    textColor: "#fef08a",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#0c2340" stroke="#b3995d" stroke-width="1.3"/>
+        <path d="M 6,15 Q 12,6 18,13 Q 12,10 6,15 Z" fill="#b3995d"/>
+      </svg>
+    `
+  },
+  WZZ: {
+    name: "Wizz Air",
+    code: "W6",
+    displayTag: "WIZZ AIR",
+    tailColor: "#c6007e",
+    wingColor: "#0f204b",
+    bodyColor: "#ffffff",
+    badgeBg: "#5c003a",
+    badgeBorder: "#ff40b3",
+    textColor: "#ffb3e6",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#c6007e" stroke="#ffffff" stroke-width="1.3"/>
+        <text x="12" y="15" font-size="9" font-weight="900" text-anchor="middle" fill="#ffffff">W</text>
+      </svg>
+    `
+  },
+  TBZ: {
+    name: "ATA Airlines",
+    code: "I3",
+    displayTag: "ATA AIR",
+    tailColor: "#002855",
+    wingColor: "#d9272e",
+    bodyColor: "#ffffff",
+    badgeBg: "#001a38",
+    badgeBorder: "#d9272e",
+    textColor: "#ffffff",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#002855" stroke="#d9272e" stroke-width="1.3"/>
+        <text x="12" y="15" font-size="8" font-weight="900" text-anchor="middle" fill="#ffffff">ATA</text>
+      </svg>
+    `
+  },
+  LOT: {
+    name: "LOT Polish Airlines",
+    code: "LO",
+    displayTag: "LOT",
+    tailColor: "#00205b",
+    wingColor: "#00205b",
+    bodyColor: "#ffffff",
+    badgeBg: "#001438",
+    badgeBorder: "#38bdf8",
+    textColor: "#ffffff",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#00205b" stroke="#ffffff" stroke-width="1.3"/>
+        <text x="12" y="15" font-size="8" font-weight="900" text-anchor="middle" fill="#ffffff">LOT</text>
+      </svg>
+    `
+  },
+  AEE: {
+    name: "Aegean Airlines",
+    code: "A3",
+    displayTag: "AEGEAN",
+    tailColor: "#002b49",
+    wingColor: "#0072ce",
+    bodyColor: "#ffffff",
+    badgeBg: "#001a2e",
+    badgeBorder: "#00a3e0",
+    textColor: "#38bdf8",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#002b49" stroke="#00a3e0" stroke-width="1.3"/>
+        <path d="M 6,14 Q 10,8 14,11 Q 18,7 18,12 Z" fill="#00a3e0"/>
+      </svg>
+    `
+  },
+  MEA: {
+    name: "Middle East Airlines",
+    code: "ME",
+    displayTag: "MEA",
+    tailColor: "#007a3d",
+    wingColor: "#ed1b24",
+    bodyColor: "#ffffff",
+    badgeBg: "#004724",
+    badgeBorder: "#ed1b24",
+    textColor: "#ffffff",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#007a3d" stroke="#ffffff" stroke-width="1.3"/>
+        <path d="M 12,6 L 15,11 L 13,11 L 16,16 L 8,16 L 11,11 L 9,11 Z" fill="#ffffff"/>
+      </svg>
+    `
+  },
+  MNB: {
+    name: "MNG Airlines",
+    code: "MB",
+    displayTag: "MNG CARGO",
+    tailColor: "#c8102e",
+    wingColor: "#00205b",
+    bodyColor: "#ffffff",
+    badgeBg: "#8b0000",
+    badgeBorder: "#ffcc00",
+    textColor: "#ffffff",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#c8102e" stroke="#ffcc00" stroke-width="1.3"/>
+        <text x="12" y="15" font-size="8" font-weight="900" text-anchor="middle" fill="#ffffff">MNG</text>
+      </svg>
+    `
+  },
+  FDX: {
+    name: "FedEx",
+    code: "FX",
+    displayTag: "FEDEX",
+    tailColor: "#4d148c",
+    wingColor: "#ff6600",
+    bodyColor: "#ffffff",
+    badgeBg: "#2d0b54",
+    badgeBorder: "#ff6600",
+    textColor: "#ffedd5",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <rect x="2" y="2" width="20" height="20" rx="3" fill="#4d148c" stroke="#ff6600" stroke-width="1.2"/>
+        <text x="12" y="15" font-size="7" font-weight="900" text-anchor="middle" fill="#ff6600">FX</text>
+      </svg>
+    `
+  },
+  PBD: {
+    name: "Pobeda",
+    code: "DP",
+    displayTag: "POBEDA",
+    tailColor: "#00a1de",
+    wingColor: "#00205b",
+    bodyColor: "#ffffff",
+    badgeBg: "#004066",
+    badgeBorder: "#00a1de",
+    textColor: "#38bdf8",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#00a1de" stroke="#ffffff" stroke-width="1.3"/>
+        <text x="12" y="15" font-size="8" font-weight="900" text-anchor="middle" fill="#ffffff">DP</text>
+      </svg>
+    `
   }
 };
 
 class AircraftMarkerManager {
-  static getLivery(airlineKey) {
-    return AIRLINE_LIVERIES[airlineKey] || AIRLINE_LIVERIES.GEN;
+  static getLivery(airlineKey, flight) {
+    if (airlineKey && AIRLINE_LIVERIES[airlineKey]) {
+      return AIRLINE_LIVERIES[airlineKey];
+    }
+
+    // Dynamic brand generator: Never default regular flights to VIP / GEN!
+    const name = flight?.airlineName || airlineKey || "Uçuş";
+    const tag = (airlineKey && airlineKey.length <= 6 && airlineKey !== "GEN") 
+      ? airlineKey 
+      : (flight?.callsign ? flight.callsign.substring(0, 3) : "AIR");
+
+    if (tag === "GEN" || tag === "TC") {
+      return AIRLINE_LIVERIES.GEN;
+    }
+
+    // Deterministic brand colors from name/tag hash
+    let hash = 0;
+    const str = (name || "") + tag;
+    for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    const h = Math.abs(hash) % 360;
+    const brandColor = `hsl(${h}, 80%, 45%)`;
+    const brandBg = `hsl(${h}, 70%, 15%)`;
+    const brandBorder = `hsl(${h}, 85%, 60%)`;
+
+    return {
+      name: name,
+      code: tag,
+      displayTag: tag,
+      tailColor: brandColor,
+      wingColor: brandColor,
+      bodyColor: "#ffffff",
+      badgeBg: brandBg,
+      badgeBorder: brandBorder,
+      textColor: "#ffffff",
+      logoSvg: `
+        <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+          <circle cx="12" cy="12" r="10.5" fill="${brandColor}" stroke="#ffffff" stroke-width="1.2"/>
+          <text x="12" y="15" font-size="8" font-weight="900" text-anchor="middle" fill="#ffffff">${tag.substring(0, 2)}</text>
+        </svg>
+      `
+    };
   }
 
   /**
@@ -250,7 +527,7 @@ class AircraftMarkerManager {
   }
 
   static createMarker(flight) {
-    const livery = this.getLivery(flight.airline);
+    const livery = this.getLivery(flight.airline, flight);
     const isSelected = (window.selectedFlightId === flight.id);
     const heading = flight.heading || 0;
     const svgHtml = this.createAircraftSVG(livery, heading, isSelected);
