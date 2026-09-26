@@ -61,13 +61,43 @@ class TaxiwayDirectionManager {
   }
 
   /**
+   * Refreshes or reloads the overlay with current or new GeoJSON
+   */
+  refreshOverlay(geojson, icao) {
+    if (geojson) {
+      this.registerAirportFeatures(geojson, icao || this.airportIcao);
+    } else if (this.isEditModeActive) {
+      this.renderAllArrows();
+    }
+  }
+
+  get isEditMode() {
+    return this.isEditModeActive;
+  }
+
+  set isEditMode(val) {
+    this.setEditMode(val);
+  }
+
+  /**
    * Registers all taxiway features from the loaded GeoJSON
    */
   registerAirportFeatures(geojson, icao = "LTFM") {
+    if (!geojson) return;
     this.airportIcao = (icao === "LTFM") ? "LTFM" : "LTFJ";
     this.taxiways = [];
     this.taxiwaysById.clear();
     this.taxiwayPolylines.clear();
+
+    if (!this.map && window.map) {
+      this.map = window.map;
+    }
+    if (!this.editInteractiveLayer && (this.map || window.map)) {
+      this.editInteractiveLayer = L.layerGroup();
+    }
+    if (!this.arrowLayerGroup && (this.map || window.map)) {
+      this.arrowLayerGroup = L.layerGroup();
+    }
 
     if (this.editInteractiveLayer) {
       this.editInteractiveLayer.clearLayers();

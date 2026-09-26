@@ -3198,56 +3198,91 @@ body {
 /* ========================================================= */
 /* RUNWAY ATC STATUS PLATES (ON RUNWAYS)                     */
 /* ========================================================= */
+.atc-rwy-plate-container {
+  background: transparent !important;
+  border: none !important;
+}
+
 .atc-rwy-plate {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 10px;
-  border-radius: 6px;
-  backdrop-filter: blur(8px);
+  padding: 6px 10px;
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
   font-family: var(--font-mono, monospace);
-  white-space: nowrap;
-  pointer-events: none;
+  box-sizing: border-box;
+  width: 210px;
+  cursor: pointer;
+  pointer-events: auto;
   user-select: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.atc-rwy-plate:hover {
+  transform: scale(1.04);
 }
 
 .atc-rwy-plate.dep {
-  background: rgba(6, 78, 59, 0.9);
+  background: rgba(6, 78, 59, 0.94);
   border: 1.5px solid #10b981;
-  color: #ecfdf5;
-  box-shadow: 0 0 16px rgba(16, 185, 129, 0.55), 0 4px 12px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.6), 0 6px 16px rgba(0, 0, 0, 0.75);
 }
 
 .atc-rwy-plate.arr {
-  background: rgba(12, 74, 110, 0.9);
+  background: rgba(12, 74, 110, 0.94);
   border: 1.5px solid #0284c7;
-  color: #f0f9ff;
-  box-shadow: 0 0 16px rgba(2, 132, 199, 0.55), 0 4px 12px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 0 18px rgba(2, 132, 199, 0.6), 0 6px 16px rgba(0, 0, 0, 0.75);
 }
 
-.atc-rwy-plate .atc-rwy-title {
-  font-size: 10.5px;
+.rwy-plate-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+
+.rwy-plate-badge {
+  font-size: 9.5px;
   font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.atc-rwy-plate.dep .rwy-plate-badge {
+  color: #6ee7b7;
+}
+
+.atc-rwy-plate.arr .rwy-plate-badge {
+  color: #7dd3fc;
+}
+
+.rwy-wind-chip {
+  font-size: 7.5px;
+  font-weight: 800;
+  background: rgba(254, 240, 138, 0.2);
+  color: #fef08a;
+  border: 1px solid rgba(254, 240, 138, 0.4);
+  padding: 1px 4px;
+  border-radius: 3px;
+  letter-spacing: 0.3px;
+}
+
+.rwy-plate-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.rwy-plate-name {
+  font-size: 13px;
+  font-weight: 900;
+  color: #ffffff;
   letter-spacing: 0.5px;
-  text-transform: uppercase;
 }
 
-.atc-rwy-plate .atc-rwy-sub {
-  font-size: 8.5px;
-  color: #a7f3d0;
-  opacity: 0.95;
-  font-weight: 600;
-}
-
-.atc-rwy-plate.arr .atc-rwy-sub {
-  color: #bae6fd;
-}
-
-.atc-rwy-plate .atc-rwy-dir {
-  font-size: 8px;
-  color: #fde047;
+.rwy-plate-heading {
+  font-size: 9.5px;
   font-weight: 700;
+  color: #fde047;
 }
 
 /* ========================================================= */

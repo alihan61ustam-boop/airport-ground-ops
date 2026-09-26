@@ -1032,7 +1032,12 @@ async function loadAirport(icao) {
     }
 
     if (window.TaxiwayDirectionManager) {
-      window.TaxiwayDirectionManager.refreshOverlay();
+      if (typeof window.TaxiwayDirectionManager.registerAirportFeatures === "function") {
+        window.TaxiwayDirectionManager.registerAirportFeatures(rawAirportGeoJSON, icao);
+      }
+      if (typeof window.TaxiwayDirectionManager.refreshOverlay === "function") {
+        window.TaxiwayDirectionManager.refreshOverlay(rawAirportGeoJSON, icao);
+      }
     }
 
     if (window.AirportWeatherService) {
