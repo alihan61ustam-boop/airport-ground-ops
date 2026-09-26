@@ -1156,8 +1156,17 @@ function renderAirportFeatures(geojson) {
           opacity: 0.85
         }
       });
-      layer.bindTooltip(`Taksi Yolu: <b>${props.ref || props.name || "TWY"}</b>`, {
+      layer.bindTooltip(`Taksi Yolu: <b>${props.ref || props.name || "TWY"}</b><br><span style="color: #38bdf8;">👉 Yön Belirlemek İçin Tıklayın</span>`, {
         sticky: true
+      });
+      layer.on("click", (e) => {
+        if (e && e.originalEvent) L.DomEvent.stopPropagation(e);
+        if (window.TaxiwayDirectionManager) {
+          if (!window.TaxiwayDirectionManager.isEditModeActive) {
+            window.TaxiwayDirectionManager.setEditMode(true);
+          }
+          window.TaxiwayDirectionManager.handleTaxiwayClick(feature, layer, e.latlng);
+        }
       });
       taxiwayLayerGroup.addLayer(layer);
       extendBounds(bounds, geom);

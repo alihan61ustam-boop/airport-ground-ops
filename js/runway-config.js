@@ -265,6 +265,44 @@ class RunwayConfigManager {
         exitMode: "flexible"
       }
     };
+
+    // Expand hold position entries to 20 holding points for all departure runways
+    this.populate20HoldEntries();
+  }
+
+  populate20HoldEntries() {
+    if (!this.catalogs) return;
+    Object.values(this.catalogs).forEach(apt => {
+      if (!apt.runways) return;
+      Object.values(apt.runways).forEach(rwy => {
+        if (!rwy.entries || rwy.entries.length < 20) {
+          const pfx = rwy.entries && rwy.entries[0] ? rwy.entries[0].name.replace(/\d+/g, "") : "TWY ";
+          const baseHold = (rwy.entries && rwy.entries[0]) ? rwy.entries[0].holdPos : rwy.threshold;
+          const endHold = rwy.liftoff || rwy.rolloutEnd || rwy.threshold;
+          const baseLineup = rwy.threshold;
+          const endLineup = rwy.liftoff || rwy.rolloutEnd || rwy.threshold;
+
+          const entries = [];
+          for (let i = 0; i < 20; i++) {
+            const t = i / 19;
+            const hLat = +(baseHold[0] + t * (endHold[0] - baseHold[0])).toFixed(6);
+            const hLon = +(baseHold[1] + t * (endHold[1] - baseHold[1])).toFixed(6);
+            const lLat = +(baseLineup[0] + t * (endLineup[0] - baseLineup[0])).toFixed(6);
+            const lLon = +(baseLineup[1] + t * (endLineup[1] - baseLineup[1])).toFixed(6);
+            const num = i + 1;
+            const cleanPfx = pfx.trim() ? pfx : "B";
+            entries.push({
+              id: `${cleanPfx}${num}`,
+              name: `${cleanPfx}${num}`,
+              desc: i === 0 ? "Pist Başı (Full Length)" : (i === 19 ? "Pist Sonu Girişi" : `Kesişim Hold Pozisyonu ${num}`),
+              holdPos: [hLat, hLon],
+              lineupPos: [lLat, lLon]
+            });
+          }
+          rwy.entries = entries;
+        }
+      });
+    });
   }
 
   setAirport(icao) {

@@ -3288,18 +3288,24 @@ body {
 /* ========================================================= */
 /* TAXIWAY EDIT HITLINES & SUPERSONIC SVG ARROWS             */
 /* ========================================================= */
+.taxi-interactive-hit,
 .taxiway-hitline {
-  stroke: transparent;
-  stroke-width: 14px;
   stroke-linecap: round;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: stroke !important;
   transition: stroke 0.15s ease, stroke-opacity 0.15s ease;
 }
 
+.taxi-interactive-hit:hover,
 .taxiway-hitline:hover {
   stroke: #00ffff !important;
-  stroke-opacity: 0.65 !important;
-  filter: drop-shadow(0 0 8px #00ffff);
+  stroke-opacity: 0.85 !important;
+  filter: drop-shadow(0 0 10px #00ffff) !important;
+}
+
+.taxi-interactive-highlight {
+  pointer-events: none !important;
+  filter: drop-shadow(0 0 8px #00f0ff);
 }
 
 .taxi-road-arrow-container {

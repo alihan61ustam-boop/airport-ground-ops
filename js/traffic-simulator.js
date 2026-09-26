@@ -897,12 +897,12 @@ class GroundTrafficSimulator {
     this.lastCongestionCheckTime = now;
 
     const queued = activeFlights.filter(f => f.isQueued || f.phase === "queued" || (f.speed === 0 && (f.phase === "taxi_in" || f.phase === "taxi_out" || f.phase === "holding")));
-    if (queued.length < 4) {
+    if (queued.length < 20) {
       this.hideCongestionAlert();
       return;
     }
 
-    // Cluster queued aircraft within 130 meters of each other
+    // Cluster queued aircraft within 140 meters of each other
     const clusters = [];
     const visited = new Set();
 
@@ -922,7 +922,7 @@ class GroundTrafficSimulator {
         }
       }
 
-      if (cluster.length >= 4) {
+      if (cluster.length >= 20) {
         clusters.push(cluster);
       }
     }

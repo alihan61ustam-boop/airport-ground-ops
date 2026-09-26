@@ -94,6 +94,10 @@ class TaxiwayDirectionManager {
     if (!this.map && window.map) {
       this.map = window.map;
     }
+    if (this.map && !this.map.getPane("taxiEditPane")) {
+      const p = this.map.createPane("taxiEditPane");
+      p.style.zIndex = "620";
+    }
     if (!this.editInteractiveLayer && (this.map || window.map)) {
       this.editInteractiveLayer = L.layerGroup();
     }
@@ -124,19 +128,23 @@ class TaxiwayDirectionManager {
         if (this.editInteractiveLayer && f.geometry.coordinates?.length >= 2) {
           const latLngs = f.geometry.coordinates.map(c => [c[1], c[0]]);
 
-          // Invisible thick line for effortless click detection (16px hit target)
+          // Generous thick line for effortless click detection (24px hit target)
           const hitLine = L.polyline(latLngs, {
-            color: "#f59e0b",
-            weight: 16,
-            opacity: 0.001,
+            pane: "taxiEditPane",
+            color: "#00f0ff",
+            weight: 24,
+            opacity: 0.05,
+            interactive: true,
             className: "taxi-interactive-hit"
           });
 
           // Visible outline line that lights up on hover
           const highlightLine = L.polyline(latLngs, {
+            pane: "taxiEditPane",
             color: "#00f0ff",
-            weight: 5.5,
+            weight: 6,
             opacity: 0,
+            interactive: false,
             className: "taxi-interactive-highlight"
           });
 
