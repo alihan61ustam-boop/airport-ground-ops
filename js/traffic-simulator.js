@@ -177,6 +177,8 @@ class GroundTrafficSimulator {
       f.trajectory = routeData.trajectory;
       f.fullRoute = routeData.fullRoute;
       f.twySequence = routeData.twySequence;
+      f.arrRwyName = routeData.arrRwyName;
+      f.depRwyName = routeData.depRwyName;
     });
 
     this.refreshActiveFlightsCache(true);
@@ -300,6 +302,8 @@ class GroundTrafficSimulator {
           trajectory: routeData.trajectory,
           fullRoute: routeData.fullRoute,
           twySequence: routeData.twySequence,
+          arrRwyName: routeData.arrRwyName,
+          depRwyName: routeData.depRwyName,
           currentTwyName: "Approach",
           delaySeconds: 0,
           isQueued: false,
@@ -386,6 +390,8 @@ class GroundTrafficSimulator {
           trajectory: routeData.trajectory,
           fullRoute: routeData.fullRoute,
           twySequence: routeData.twySequence,
+          arrRwyName: routeData.arrRwyName,
+          depRwyName: routeData.depRwyName,
           currentTwyName: "Approach",
           delaySeconds: 0,
           isQueued: false,
@@ -505,6 +511,8 @@ class GroundTrafficSimulator {
           trajectory: routeData.trajectory,
           fullRoute: routeData.fullRoute,
           twySequence: routeData.twySequence,
+          arrRwyName: routeData.arrRwyName,
+          depRwyName: routeData.depRwyName,
           currentTwyName: "Approach",
           delaySeconds: 0,
           isQueued: false,
@@ -608,7 +616,7 @@ class GroundTrafficSimulator {
     const activeFlights = this.activeFlightsCache;
     const activeLength = activeFlights.length;
 
-    const rwyActive = { "16R": false, "17L": false, "06L": false, "06R": false };
+    const activeRunwaysOccupied = new Set();
     const occupiedFlightsMap = new Map();
     let counts = { approaching: 0, taxiing: 0, on_stand: 0, takeoff: 0, safetyHold: 0 };
 
@@ -617,7 +625,7 @@ class GroundTrafficSimulator {
       const f = activeFlights[i];
 
       // Dynamic simulation delay accumulation:
-      // While queued/holding for flight safety, accumulate delay so effectiveTime
+      // While queued/holding for physical safety, accumulate delay so effectiveTime
       // stays exactly constant and the plane remains physically motionless.
       if (f.isQueued && dtSim > 0) {
         f.delaySeconds = (f.delaySeconds || 0) + dtSim;
@@ -637,14 +645,14 @@ class GroundTrafficSimulator {
           f.phase = "queued";
           counts.safetyHold++;
           const origTwy = state.twyName || "Taksi Yolu";
-          if (f.queueReason === "longitudinal") {
-            f.currentTwyName = `${origTwy} (Ön-Arka 2 Boy Ayrım [${f.conflictWith || ''}])`;
-          } else if (f.queueReason === "lateral") {
-            f.currentTwyName = `${origTwy} (1.5x Kanat Yanal Ayrım [${f.conflictWith || ''}])`;
+          if (f.queueReason === "following") {
+            f.currentTwyName = `${origTwy} (Ön-Arka Takip Mesafesi [${f.conflictWith || ''}])`;
+          } else if (f.queueReason === "junction_yield") {
+            f.currentTwyName = `${origTwy} (Kavşak Yol Verme - Düz Trafik Öncelikli [${f.conflictWith || ''}])`;
           } else if (f.queueReason === "takeoff_separation") {
-            f.currentTwyName = `${origTwy} (Pist Kalkış Güvenlik Beklemesi)`;
+            f.currentTwyName = `${origTwy} (Pist İniş/Kalkış Beklemesi)`;
           } else {
-            f.currentTwyName = `${origTwy} (Taksi Güvenlik Beklemesi)`;
+            f.currentTwyName = `${origTwy} (Taksi Geçiş Beklemesi)`;
           }
         } else {
           f.speed = state.speed;
@@ -657,14 +665,14 @@ class GroundTrafficSimulator {
           f.remainingRoute = this.getRemainingPath(f, effectiveTime);
         }
 
-        if (state.phase === "landing" || state.phase === "takeoff") {
-          if (this.airportIcao === "LTFM") {
-            if (state.phase === "landing") rwyActive["16R"] = true;
-            if (state.phase === "takeoff") rwyActive["17L"] = true;
-          } else {
-            if (state.phase === "landing") rwyActive["06L"] = true;
-            if (state.phase === "takeoff") rwyActive["06R"] = true;
-          }
+        // Dynamic Runway Occupancy Check:
+        // A runway is only occupied if an aircraft is physically rolling on its surface
+        if (state.phase === "landing" && state.alt <= 18 && state.speed > 28) {
+          const rwyCode = this.extractRunwayCode(f.arrRwyName || state.twyName);
+          if (rwyCode) activeRunwaysOccupied.add(rwyCode);
+        } else if (state.phase === "takeoff" && state.alt <= 25 && state.speed >= 28 && state.speed < 150) {
+          const rwyCode = this.extractRunwayCode(f.depRwyName || state.twyName);
+          if (rwyCode) activeRunwaysOccupied.add(rwyCode);
         }
       }
     }
@@ -673,7 +681,7 @@ class GroundTrafficSimulator {
     const runSeparation = forceFullUpdate || (now - this.lastSeparationCheckTime > 200);
     if (runSeparation) {
       this.lastSeparationCheckTime = now;
-      this.checkGroundSeparation(activeFlights, rwyActive);
+      this.checkGroundSeparation(activeFlights, activeRunwaysOccupied);
       this.checkCongestionAndDeadlocks(activeFlights);
     }
 
@@ -735,12 +743,14 @@ class GroundTrafficSimulator {
   }
 
   /**
-   * Enforces strict flight safety separation rules between ground aircraft:
-   * 1. Longitudinal (Ön-Arka / Dikey): Minimum 2.0 aircraft lengths (≥ 2.0 * max(lenA, lenB))
-   * 2. Lateral (Yanal Pozisyon): More than 1.5x wingspan (> 1.5 * max(spanA, spanB))
-   * Applies across taxiways, intersections, and takeoff / runway operations.
+   * Enforces realistic ground traffic rules:
+   * 1. Dynamic Runway Clearance: If no aircraft is actively taking off or landing on the runway,
+   *    taxiing aircraft proceed immediately without holding.
+   * 2. Physical Overlap Separation: Pure physical clearance (nose-to-tail ~24m); no artificial 130m deadlocks.
+   * 3. Junction Priority: Straight-moving aircraft ("düz gelen") automatically have priority;
+   *    aircraft turning or emerging from runway exits ("tahliye yolu") yield and proceed once clear.
    */
-  checkGroundSeparation(activeFlights, rwyActive) {
+  checkGroundSeparation(activeFlights, activeRunwaysOccupied) {
     const activeLength = activeFlights.length;
     const applicablePhases = new Set(["taxi_in", "taxi_out", "pushback", "holding", "queued", "takeoff"]);
 
@@ -753,18 +763,24 @@ class GroundTrafficSimulator {
         continue;
       }
 
-      // Holding point runway safety check
+      // 1. Dynamic Runway Clearance Check at Runway Hold Point
       if (flightA.isHoldingPoint) {
-        const targetRwy = this.airportIcao === "LTFM" ? "17L" : "06R";
-        if (rwyActive[targetRwy]) {
+        const depRwyRaw = flightA.depRwyName || (this.airportIcao === "LTFM" ? "35R" : "06R");
+        const depRwyCode = this.extractRunwayCode(depRwyRaw);
+        if (activeRunwaysOccupied && activeRunwaysOccupied.has(depRwyCode)) {
+          // Runway is actively occupied by a rolling aircraft -> hold briefly
           flightA.isQueued = true;
           flightA.queueReason = "takeoff_separation";
-          flightA.conflictWith = `Pist ${targetRwy} Trafiği`;
+          flightA.conflictWith = `Pist ${depRwyCode} Aktif Trafiği`;
           continue;
+        } else {
+          // Runway is completely CLEAR -> Clear immediately, line up and depart!
+          flightA.isQueued = false;
+          flightA.queueReason = null;
+          flightA.conflictWith = null;
         }
       }
 
-      const dimA = flightA.dim || getAircraftDim(flightA.type);
       let conflictFound = false;
 
       for (let j = 0; j < activeLength; j++) {
@@ -772,23 +788,14 @@ class GroundTrafficSimulator {
         const flightB = activeFlights[j];
         if (!applicablePhases.has(flightB.phase) && flightB.phase !== "landing") continue;
 
-        const dimB = flightB.dim || getAircraftDim(flightB.type);
-
-        // Required safety separation buffers:
-        // 1. Dikey / Ön-arka: Her zaman en az 2 uçak boyu mesafe
-        const reqLong = 2.0 * Math.max(dimA.length, dimB.length);
-        // 2. Yanal: Kanat açıklığının bir buçuk katından fazla (> 1.5x wingspan)
-        const reqLat = 1.5 * Math.max(dimA.wingspan, dimB.wingspan);
-
-        // Ground distance in meters
+        // Ground distance in meters (fast Euclidean approximation)
         const midLatRad = ((flightA.lat + flightB.lat) * 0.5) * (Math.PI / 180);
         const dNorth = (flightB.lat - flightA.lat) * 111139;
         const dEast = (flightB.lon - flightA.lon) * (111139 * Math.cos(midLatRad));
         const distSq = dEast * dEast + dNorth * dNorth;
 
-        // Bounding box filter for maximum performance
-        const maxBuffer = reqLong + 60;
-        if (distSq > maxBuffer * maxBuffer) continue;
+        // Physical collision / overlap zone: only aircraft within 26 meters can touch
+        if (distSq > 26 * 26) continue;
 
         // Project relative vector onto Flight A's heading frame
         const headingRad = (flightA.heading || 0) * (Math.PI / 180);
@@ -804,65 +811,40 @@ class GroundTrafficSimulator {
         let dHdg = Math.abs((flightA.heading || 0) - (flightB.heading || 0));
         if (dHdg > 180) dHdg = 360 - dHdg;
 
-        // RULE 1: Ön-Arka (Longitudinal) Following Separation (2 Uçak Boyu)
-        // Flight B is ahead of Flight A within 2 aircraft lengths, inside the corridor
-        if (distLong > 0 && distLong < reqLong && distLat < reqLat) {
-          if (dHdg < 90) {
-            // Trailing behind leading aircraft
-            flightA.isQueued = true;
-            flightA.queueReason = "longitudinal";
-            flightA.conflictWith = flightB.callsign;
-            flightA.reqMinLong = Math.round(reqLong);
-            flightA.reqMinLat = Math.round(reqLat);
-            flightA.currentLongDist = Math.round(distLong);
-            flightA.currentLatDist = Math.round(distLat);
-            conflictFound = true;
-            break;
-          } else {
-            // Converging / intersecting head-on
-            if (this.shouldYield(flightA, flightB)) {
-              flightA.isQueued = true;
-              flightA.queueReason = "headon";
-              flightA.conflictWith = flightB.callsign;
-              flightA.reqMinLong = Math.round(reqLong);
-              flightA.reqMinLat = Math.round(reqLat);
-              conflictFound = true;
-              break;
-            }
-          }
+        // If aircraft are on parallel taxiways (separated laterally by >= 12m) -> NO conflict
+        const isParallelHeading = dHdg < 40 || dHdg > 140;
+        if (isParallelHeading && distLat >= 12) continue;
+
+        // RULE 1: Direct in-trail following on the same taxiway centerline (< 24m)
+        if (distLong > 0 && distLong < 24 && distLat < 8 && dHdg < 65) {
+          flightA.isQueued = true;
+          flightA.queueReason = "following";
+          flightA.conflictWith = flightB.callsign;
+          conflictFound = true;
+          break;
         }
 
-        // RULE 2: Yanal (Lateral) Separation (> 1.5x Kanat Açıklığı)
-        // When aircraft are alongside each other (parallel taxiways, merge, crossing)
-        // and lateral distance is <= 1.5x wingspan
-        const overlapThreshold = Math.max(dimA.length, dimB.length) * 1.2;
-        if (Math.abs(distLong) <= overlapThreshold && distLat <= reqLat) {
-          if (this.shouldYield(flightA, flightB)) {
-            flightA.isQueued = true;
-            flightA.queueReason = "lateral";
-            flightA.conflictWith = flightB.callsign;
-            flightA.reqMinLong = Math.round(reqLong);
-            flightA.reqMinLat = Math.round(reqLat);
-            flightA.currentLongDist = Math.round(distLong);
-            flightA.currentLatDist = Math.round(distLat);
-            conflictFound = true;
-            break;
-          }
+        // RULE 2: Junction / Intersection / Merge: Düz gelene öncelik
+        if (this.shouldYield(flightA, flightB)) {
+          flightA.isQueued = true;
+          flightA.queueReason = "junction_yield";
+          flightA.conflictWith = flightB.callsign;
+          conflictFound = true;
+          break;
         }
 
-        // RULE 3: Kalkış (Takeoff) ve Pist Güvenlik Ayrımı
-        // If Flight A is taking off or lined up, and Flight B is on the runway ahead
-        if (flightA.phase === "takeoff" && distLong > 0 && distLong < 450 && distLat < 45) {
+        // RULE 3: Runway Takeoff Roll Safety: If ahead on runway roll corridor
+        if (flightA.phase === "takeoff" && distLong > 0 && distLong < 350 && distLat < 25) {
           flightA.isQueued = true;
           flightA.queueReason = "takeoff_separation";
           flightA.conflictWith = flightB.callsign;
-          flightA.reqMinLong = Math.round(reqLong);
           conflictFound = true;
           break;
         }
       }
 
-      if (!conflictFound && !flightA.isHoldingPoint) {
+      // If no conflict or hold applies, aircraft is fully cleared to move!
+      if (!conflictFound && (!flightA.isHoldingPoint || !activeRunwaysOccupied.has(this.extractRunwayCode(flightA.depRwyName)))) {
         flightA.isQueued = false;
         flightA.queueReason = null;
         flightA.conflictWith = null;
@@ -870,15 +852,71 @@ class GroundTrafficSimulator {
     }
   }
 
+  /**
+   * Returns priority rank for taxiway interactions:
+   * Rank 0: Active Takeoff Roll on Runway (Absolute Priority)
+   * Rank 1: Düz Gelen (Straight Taxiing along main corridor) - Highest Taxiway Priority
+   * Rank 2: Dönüş Yapan (Curved Connector / Turning Traffic) - Yields to straight
+   * Rank 3: Tahliye Yolu / Pist Çıkışı (Runway exit traffic) - Yields to main taxiway flow
+   */
+  getPriorityRank(f) {
+    if (f.phase === "takeoff") return 0;
+
+    const twy = (f.currentTwyName || "").toLowerCase();
+    const isExit = twy.includes("çıkış") || twy.includes("exit") || twy.includes("rapid") || (f.phase === "taxi_in" && f.speed < 20);
+    if (isExit) return 3;
+
+    // Check trajectory curvature ~35m ahead for straight vs turning
+    if (f.trajectory && f.trajectory.length >= 2) {
+      const nextPt = this.getNextTrajectoryWaypoint(f, 35);
+      if (nextPt) {
+        const nextBearing = this.calcBearing([f.lat, f.lon], nextPt);
+        let dAngle = Math.abs((f.heading || 0) - nextBearing);
+        if (dAngle > 180) dAngle = 360 - dAngle;
+        if (dAngle > 20) {
+          return 2; // Turning / curved connector
+        }
+      }
+    }
+
+    return 1; // Düz gelen (Straight taxiway)
+  }
+
+  getNextTrajectoryWaypoint(f, distMeters = 35) {
+    const traj = f.trajectory;
+    if (!traj || traj.length < 2) return null;
+    const curLat = f.lat;
+    const curLon = f.lon;
+    for (let i = 0; i < traj.length; i++) {
+      const pt = traj[i].pos;
+      const d = this.calcDistance(curLat, curLon, pt[0], pt[1]);
+      if (d >= distMeters) {
+        return pt;
+      }
+    }
+    return traj[traj.length - 1].pos;
+  }
+
+  /**
+   * Deterministic yield rule:
+   * 1. Straight-moving aircraft has priority over turning and runway exit traffic.
+   * 2. Turning aircraft has priority over runway exit traffic.
+   * 3. Moving aircraft has priority over stopped aircraft.
+   */
   shouldYield(fA, fB) {
-    if (fA.phase === "taxi_in" && fB.phase !== "taxi_in") return false;
-    if (fB.phase === "taxi_in" && fA.phase !== "taxi_in") return true;
+    const rankA = this.getPriorityRank(fA);
+    const rankB = this.getPriorityRank(fB);
 
-    if (fA.phase === "takeoff" && fB.phase !== "takeoff") return false;
-    if (fB.phase === "takeoff" && fA.phase !== "takeoff") return true;
+    // Lower rank = higher priority
+    if (rankA > rankB) return true;  // fA yields to fB (e.g. turning/exit yields to straight)
+    if (rankA < rankB) return false; // fA has priority over fB (straight over turning/exit)
 
+    // Equal rank tie-breaker:
+    if (!fA.isQueued && fB.isQueued) return false;
     if (fA.isQueued && !fB.isQueued) return true;
-    if (fB.isQueued && !fA.isQueued) return false;
+
+    if (fA.speed > fB.speed + 2) return false;
+    if (fB.speed > fA.speed + 2) return true;
 
     if (fA.startTime !== fB.startTime) {
       return fA.startTime > fB.startTime;
@@ -1119,6 +1157,24 @@ class GroundTrafficSimulator {
     }
 
     return null;
+  }
+
+  extractRunwayCode(str) {
+    if (!str) return "";
+    const m = String(str).match(/\d{2}[LRC]?/i);
+    return m ? m[0].toUpperCase() : "";
+  }
+
+  calcDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3;
+    const p1 = lat1 * Math.PI / 180;
+    const p2 = lat2 * Math.PI / 180;
+    const dp = (lat2 - lat1) * Math.PI / 180;
+    const dl = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dp / 2) * Math.sin(dp / 2) +
+              Math.cos(p1) * Math.cos(p2) *
+              Math.sin(dl / 2) * Math.sin(dl / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
   calcBearing(start, end) {

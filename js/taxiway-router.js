@@ -452,34 +452,49 @@ class TaxiwayGraphRouter {
       twyName: "Pushback"
     });
 
-    // Outbound taxiway graph path strictly to the Mandatory Entry holding point
+    // Outbound taxiway graph path (smooth taxiing without intermediate holding points)
     if (outboundRoute && outboundRoute.coords.length > 0) {
-      const stepDuration = Math.max(3, Math.floor(240 / outboundRoute.coords.length));
+      const stepDuration = Math.max(3, Math.floor(220 / outboundRoute.coords.length));
       outboundRoute.coords.forEach((coord, idx) => {
         curTime += stepDuration;
         const twyTag = outboundRoute.twyNames[Math.min(idx, outboundRoute.twyNames.length - 1)] || "Taxiway";
-        const isHold = (idx >= outboundRoute.coords.length - 2);
         trajectory.push({
           time: curTime,
           pos: coord,
-          phase: isHold ? "holding" : "taxi_out",
-          speed: isHold ? 10 : 16,
+          phase: "taxi_out",
+          speed: 16,
           alt: 0,
-          twyName: isHold ? `Zorunlu Giriş: TWY ${mandatoryEntryName} (Hold)` : twyTag,
-          isHoldingPoint: isHold
+          twyName: twyTag,
+          isHoldingPoint: false,
+          depRwy: depRwyName
         });
       });
     }
 
-    // Lineup on takeoff runway strictly from the mandatory entry point
-    curTime += 20;
+    // Runway Entry Hold Point (located strictly at runway threshold/holding line)
+    curTime += 12;
+    trajectory.push({
+      time: curTime,
+      pos: rwyTakeoffHold,
+      phase: "holding",
+      speed: 10,
+      alt: 0,
+      twyName: `Pist Girişi: TWY ${mandatoryEntryName} (Hold)`,
+      isHoldingPoint: true,
+      depRwy: depRwyName
+    });
+
+    // Lineup on takeoff runway
+    curTime += 18;
     trajectory.push({
       time: curTime,
       pos: rwyTakeoffThreshold,
       phase: "takeoff",
       speed: 40,
       alt: 0,
-      twyName: `${depRwyName} Lineup (via ${mandatoryEntryName})`
+      twyName: `${depRwyName} Lineup (via ${mandatoryEntryName})`,
+      isHoldingPoint: false,
+      depRwy: depRwyName
     });
 
     // Departure Runway Centerline Unit Vector
@@ -497,7 +512,9 @@ class TaxiwayGraphRouter {
       phase: "takeoff",
       speed: 160,
       alt: 20,
-      twyName: depRwyName
+      twyName: depRwyName,
+      isHoldingPoint: false,
+      depRwy: depRwyName
     });
 
     // Climbout point 100% collinear with runway centerline (extended ~4.5 km straight ahead)
@@ -512,7 +529,9 @@ class TaxiwayGraphRouter {
       phase: "departed",
       speed: 220,
       alt: 2800,
-      twyName: "Departed"
+      twyName: "Departed",
+      isHoldingPoint: false,
+      depRwy: depRwyName
     });
 
     const fullRoute = trajectory.map(t => t.pos);
@@ -521,14 +540,16 @@ class TaxiwayGraphRouter {
       ...(inboundRoute?.twyNames || []),
       `Stand ${standRef}`,
       ...(outboundRoute?.twyNames || []),
-      `Zorunlu Giriş: ${mandatoryEntryName}`,
+      `Pist Girişi: ${mandatoryEntryName}`,
       depRwyName
     ];
 
     return {
       trajectory,
       fullRoute,
-      twySequence
+      twySequence,
+      arrRwyName,
+      depRwyName
     };
   }
 

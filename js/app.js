@@ -732,55 +732,55 @@ function updateLiveHUD(flight) {
     phaseElem.style.color = "#fbbf24";
     phaseElem.style.background = "rgba(245, 158, 11, 0.25)";
 
-    if (flight.queueReason === "longitudinal") {
-      phaseElem.textContent = "Ön-Arka Ayrım Hold";
+    if (flight.queueReason === "following") {
+      phaseElem.textContent = "Ön-Arka Takip";
       if (longStatus) {
         longStatus.className = "rule-status warn";
-        longStatus.textContent = `Bekleniyor (${flight.conflictWith || 'Trafik'} < ${minLongReq}m)`;
+        longStatus.textContent = `Öndeki Uçak Bekleniyor (${flight.conflictWith || 'Trafik'})`;
       }
       if (latStatus) {
         latStatus.className = "rule-status ok";
-        latStatus.textContent = `> ${minLatReq}m Korunuyor`;
+        latStatus.textContent = `Fiziksel Ayrım Korunuyor`;
       }
       if (safetyDetail) {
         safetyDetail.classList.remove("hidden");
-        safetyDetail.textContent = `⚠️ Uçuş Güvenliği: Öndeki uçak (${flight.conflictWith || 'Trafik'}) ile 2 uçak boyu emniyet mesafesi (${minLongReq}m) sağlanana kadar taksi durduruldu.`;
+        safetyDetail.textContent = `⚠️ Yer Hareketi: Öndeki uçak (${flight.conflictWith || 'Trafik'}) ile fiziksel temas önleme mesafesi (< 24m) nedeniyle bekleniyor.`;
       }
-    } else if (flight.queueReason === "lateral") {
-      phaseElem.textContent = "Yanal Ayrım Hold";
+    } else if (flight.queueReason === "junction_yield") {
+      phaseElem.textContent = "Kavşak Yol Verme";
       if (longStatus) {
-        longStatus.className = "rule-status ok";
-        longStatus.textContent = `≥ ${minLongReq}m Korunuyor`;
+        longStatus.className = "rule-status warn";
+        longStatus.textContent = `Düz Gelen Trafik Öncelikli`;
       }
       if (latStatus) {
         latStatus.className = "rule-status warn";
-        latStatus.textContent = `Bekleniyor (${flight.conflictWith || 'Trafik'} ≤ ${minLatReq}m)`;
+        latStatus.textContent = `Yol Veriliyor (${flight.conflictWith || 'Trafik'})`;
       }
       if (safetyDetail) {
         safetyDetail.classList.remove("hidden");
-        safetyDetail.textContent = `⚠️ Uçuş Güvenliği: Kesişen/yanal trafik (${flight.conflictWith || 'Trafik'}) ile 1.5x kanat açıklığı (${minLatReq}m) güvenlik ayrımı için yol veriliyor.`;
+        safetyDetail.textContent = `⚠️ Kavşak Önceliği: Ana hatta düz devam eden trafiğe (${flight.conflictWith || 'Trafik'}) otomatik öncelik verildi; geçişi bekleniyor.`;
       }
     } else if (flight.queueReason === "takeoff_separation") {
-      phaseElem.textContent = "Pist Ayrım Hold";
+      phaseElem.textContent = "Pist Beklemesi (Hold)";
       if (longStatus) {
         longStatus.className = "rule-status warn";
-        longStatus.textContent = `Pist Beklemesi (Hold)`;
+        longStatus.textContent = `Pist İniş/Kalkış Beklemesi`;
       }
       if (latStatus) {
         latStatus.className = "rule-status ok";
-        latStatus.textContent = `> ${minLatReq}m Korunuyor`;
+        latStatus.textContent = `Pist Başı Hazır`;
       }
       if (safetyDetail) {
         safetyDetail.classList.remove("hidden");
-        safetyDetail.textContent = `⚠️ Uçuş Güvenliği: Pistteki iniş/kalkış trafiği (${flight.conflictWith || 'Pist'}) ayrımı tamamlanana kadar bekleme noktasında tutuluyor.`;
+        safetyDetail.textContent = `⚠️ Pist Trafiği: ${flight.conflictWith || 'Pistteki uçak'} iniş/kalkış koşusunu tamamlayıp pisti terk edene kadar bekleme noktasında tutuluyor.`;
       }
     } else {
       phaseElem.textContent = "Taksi Sırasında";
       if (longStatus) longStatus.textContent = `Taksi Sırasında Bekliyor`;
-      if (latStatus) latStatus.textContent = `> ${minLatReq}m Korunuyor`;
+      if (latStatus) latStatus.textContent = `Fiziksel Ayrım Korunuyor`;
       if (safetyDetail) {
         safetyDetail.classList.remove("hidden");
-        safetyDetail.textContent = `Taksi yolu güvenlik ayrımı gereğince yer hareketi durduruldu.`;
+        safetyDetail.textContent = `Taksi yolu yer akışı gereğince bekleniyor.`;
       }
     }
   } else {
@@ -790,15 +790,15 @@ function updateLiveHUD(flight) {
 
     if (safetyBadge) {
       safetyBadge.className = "hud-safety-badge safe";
-      safetyBadge.textContent = "GÜVENLİ (STANDART)";
+      safetyBadge.textContent = "AKICI (PİST & KAVŞAK AÇIK)";
     }
     if (longStatus) {
       longStatus.className = "rule-status ok";
-      longStatus.textContent = `≥ 2 Uçak Boyu (${minLongReq}m) Aktif`;
+      longStatus.textContent = `Mesafe Korunuyor (Serbest)`;
     }
     if (latStatus) {
       latStatus.className = "rule-status ok";
-      latStatus.textContent = `> 1.5x Kanat (${minLatReq}m) Aktif`;
+      latStatus.textContent = `Kavşak & Pist Açık`;
     }
     if (safetyDetail) {
       safetyDetail.classList.add("hidden");
