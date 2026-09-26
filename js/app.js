@@ -917,16 +917,25 @@ function setupTimelineControls() {
   if (slider) slider.value = Math.floor(trafficSim.simSeconds);
   if (clock) clock.textContent = trafficSim.formatTime(trafficSim.simSeconds);
 
-  btnPlay.addEventListener("click", () => {
-    if (trafficSim.isPlaying) {
-      trafficSim.pause();
-      btnPlay.textContent = "▶";
-      btnPlay.title = "Oynat";
-    } else {
+  window.setSimulationPlayback = function(play) {
+    if (!trafficSim) return;
+    if (play) {
       trafficSim.start();
-      btnPlay.textContent = "⏸";
-      btnPlay.title = "Duraklat";
+      if (btnPlay) {
+        btnPlay.textContent = "⏸";
+        btnPlay.title = "Duraklat";
+      }
+    } else {
+      trafficSim.pause();
+      if (btnPlay) {
+        btnPlay.textContent = "▶";
+        btnPlay.title = "Oynat";
+      }
     }
+  };
+
+  btnPlay.addEventListener("click", () => {
+    window.setSimulationPlayback(!trafficSim.isPlaying);
   });
 
   // Speed multiplier buttons

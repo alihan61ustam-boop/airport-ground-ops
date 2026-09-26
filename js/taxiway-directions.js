@@ -13,6 +13,8 @@ class TaxiwayDirectionManager {
   constructor() {
     this.airportIcao = "LTFM";
     this.isEditModeActive = false;
+    this.wasSimPlayingBeforeEdit = false;
+    this.hasPendingRouteChanges = false;
     this.map = null;
 
     // Map layer groups
@@ -182,11 +184,26 @@ class TaxiwayDirectionManager {
    * Toggles Edit Mode between AKTİF and PASİF
    */
   setEditMode(isActive) {
-    this.isEditModeActive = !!isActive;
+    const nextActive = !!isActive;
+    if (this.isEditModeActive === nextActive) return;
 
-    if (this.map) {
-      const container = this.map.getContainer();
-      if (this.isEditModeActive) {
+    this.isEditModeActive = nextActive;
+
+    if (this.isEditModeActive) {
+      // 1. Simülasyon saatini ve zaman akışını durdur
+      const sim = window.trafficSimulator || window.trafficSim;
+      this.wasSimPlayingBeforeEdit = !!(sim && sim.isPlaying);
+
+      if (window.setSimulationPlayback) {
+        window.setSimulationPlayback(false);
+      } else if (sim && sim.isPlaying) {
+        sim.pause();
+      }
+
+      this.hasPendingRouteChanges = false;
+
+      if (this.map) {
+        const container = this.map.getContainer();
         container.classList.add("taxiway-edit-mode-active");
         if (this.editInteractiveLayer && !this.map.hasLayer(this.editInteractiveLayer)) {
           this.editInteractiveLayer.addTo(this.map);
@@ -195,10 +212,15 @@ class TaxiwayDirectionManager {
           this.arrowLayerGroup.addTo(this.map);
         }
         this.renderAllArrows();
-        if (typeof showToast === "function") {
-          showToast("🔀 Taksi Yönü Düzenleme AKTİF: Turuncu taksi yollarına tıklayarak yönü belirleyin.");
-        }
-      } else {
+      }
+
+      if (typeof showToast === "function") {
+        showToast("⏸️ Taksi Yönü Düzenleme AKTİF: Simülasyon saati durduruldu. Yollara tıklayarak yönleri belirleyin.");
+      }
+    } else {
+      // 2. Düzenleme PASİF: Normal görünüme dön
+      if (this.map) {
+        const container = this.map.getContainer();
         container.classList.remove("taxiway-edit-mode-active");
         if (this.editInteractiveLayer && this.map.hasLayer(this.editInteractiveLayer)) {
           this.map.removeLayer(this.editInteractiveLayer);
@@ -208,6 +230,47 @@ class TaxiwayDirectionManager {
         }
         this.arrowLayerGroup.clearLayers();
         this.map.closePopup();
+      }
+
+      // 3. Değişiklik varsa TEK SEFERDE hepsini hesapla ve simülasyonu yeniden oluştur
+      if (this.hasPendingRouteChanges) {
+        this.hasPendingRouteChanges = false;
+        if (typeof showToast === "function") {
+          showToast("⚙️ Yeni taksi yönleri uygulandı, tüm rotalar tek seferde hesaplanıyor...");
+        }
+
+        setTimeout(() => {
+          this.rebuildSystemRoutes();
+
+          const sim = window.trafficSimulator || window.trafficSim;
+          if (sim) {
+            sim.updateSimulation(0, true);
+          }
+
+          if (this.wasSimPlayingBeforeEdit) {
+            if (window.setSimulationPlayback) {
+              window.setSimulationPlayback(true);
+            } else if (sim) {
+              sim.start();
+            }
+            if (typeof showToast === "function") {
+              showToast("✔️ Yeni taksi rotaları hazır, simülasyon akışı devam ediyor.");
+            }
+          } else {
+            if (typeof showToast === "function") {
+              showToast("✔️ Yeni taksi rotaları başarıyla oluşturuldu.");
+            }
+          }
+        }, 25);
+      } else {
+        if (this.wasSimPlayingBeforeEdit) {
+          if (window.setSimulationPlayback) {
+            window.setSimulationPlayback(true);
+          } else {
+            const sim = window.trafficSimulator || window.trafficSim;
+            if (sim) sim.start();
+          }
+        }
         if (typeof showToast === "function") {
           showToast("⚪ Taksi Yönü Düzenleme PASİF: Normal akış görüntüsüne dönüldü.");
         }
@@ -251,8 +314,12 @@ class TaxiwayDirectionManager {
     // Refresh visual arrow for this road
     this.renderAllArrows();
 
-    // Rebuild flight routes dynamically
-    this.rebuildSystemRoutes();
+    this.hasPendingRouteChanges = true;
+
+    // Only rebuild immediately if NOT in interactive edit mode
+    if (!this.isEditModeActive) {
+      this.rebuildSystemRoutes();
+    }
 
     // Update UI badge & stats
     this.updateUI();
@@ -274,8 +341,11 @@ class TaxiwayDirectionManager {
       this.featureDirections.set(featId, dir);
     }
 
+    this.hasPendingRouteChanges = true;
     this.renderAllArrows();
-    this.rebuildSystemRoutes();
+    if (!this.isEditModeActive) {
+      this.rebuildSystemRoutes();
+    }
     this.updateUI();
 
     if (this.map) this.map.closePopup();
@@ -306,8 +376,11 @@ class TaxiwayDirectionManager {
       }
     });
 
+    this.hasPendingRouteChanges = true;
     this.renderAllArrows();
-    this.rebuildSystemRoutes();
+    if (!this.isEditModeActive) {
+      this.rebuildSystemRoutes();
+    }
     this.updateUI();
 
     if (this.map) this.map.closePopup();
@@ -510,8 +583,11 @@ class TaxiwayDirectionManager {
       c.direction = (idx % 2 === 0) ? "WEST_TO_EAST" : "EAST_TO_WEST";
     });
 
+    this.hasPendingRouteChanges = true;
     this.renderAllArrows();
-    this.rebuildSystemRoutes();
+    if (!this.isEditModeActive) {
+      this.rebuildSystemRoutes();
+    }
     this.updateUI();
 
     if (typeof showToast === "function") {
@@ -526,8 +602,11 @@ class TaxiwayDirectionManager {
       c.direction = (idx % 2 === 0) ? "EAST_TO_WEST" : "WEST_TO_EAST";
     });
 
+    this.hasPendingRouteChanges = true;
     this.renderAllArrows();
-    this.rebuildSystemRoutes();
+    if (!this.isEditModeActive) {
+      this.rebuildSystemRoutes();
+    }
     this.updateUI();
 
     if (typeof showToast === "function") {
@@ -543,8 +622,11 @@ class TaxiwayDirectionManager {
       c.direction = "BIDIRECTIONAL";
     });
 
+    this.hasPendingRouteChanges = true;
     this.renderAllArrows();
-    this.rebuildSystemRoutes();
+    if (!this.isEditModeActive) {
+      this.rebuildSystemRoutes();
+    }
     this.updateUI();
 
     if (typeof showToast === "function") {
@@ -554,8 +636,9 @@ class TaxiwayDirectionManager {
 
   rebuildSystemRoutes() {
     if (window.TaxiwayGraphRouter && window.TaxiwayGraphRouter.isGraphReady) {
-      if (window.trafficSimulator) {
-        window.trafficSimulator.rebuildFlightTrajectories();
+      const sim = window.trafficSimulator || window.trafficSim;
+      if (sim && typeof sim.rebuildFlightTrajectories === "function") {
+        sim.rebuildFlightTrajectories();
       }
     }
   }
@@ -636,7 +719,7 @@ class TaxiwayDirectionManager {
     const count = this.featureDirections.size;
 
     if (headerSummary) {
-      headerSummary.textContent = this.isEditModeActive ? "DÜZENLE: AKTİF" : "DÜZENLE: PASİF";
+      headerSummary.textContent = this.isEditModeActive ? "DÜZENLE: AKTİF (Saat Durduruldu)" : "DÜZENLE: PASİF";
     }
 
     if (headerBtn) {
@@ -654,7 +737,7 @@ class TaxiwayDirectionManager {
     if (btnToggle && txtStatus) {
       if (this.isEditModeActive) {
         btnToggle.className = "btn-mode-toggle active";
-        txtStatus.textContent = "AKTİF";
+        txtStatus.textContent = "AKTİF (Saat Duraklatıldı)";
       } else {
         btnToggle.className = "btn-mode-toggle passive";
         txtStatus.textContent = "PASİF";
@@ -662,7 +745,7 @@ class TaxiwayDirectionManager {
     }
 
     if (lblCount) {
-      lblCount.textContent = `${count} Yol`;
+      lblCount.textContent = `${count} Yol${this.hasPendingRouteChanges ? ' (Hesaplama Beklemede)' : ''}`;
     }
   }
 
