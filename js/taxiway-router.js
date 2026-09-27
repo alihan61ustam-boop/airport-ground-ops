@@ -267,66 +267,100 @@ class TaxiwayGraphRouter {
     let rwyThreshold, rwyTouchdown, rwyExits, rwyTakeoffHold, rwyTakeoffThreshold, rwyLiftoff;
     let arrRwyName, depRwyName, mandatoryEntryName;
 
-    if (rwyCfg && rwyCfg.arrRunwayData && rwyCfg.depRunwayData) {
-      rwyThreshold = rwyCfg.arrRunwayData.threshold;
-      rwyTouchdown = rwyCfg.arrRunwayData.touchdown;
-      rwyExits = rwyCfg.allowedExits && rwyCfg.allowedExits.length > 0
-        ? rwyCfg.allowedExits
-        : rwyCfg.allExits;
-      arrRwyName = rwyCfg.arrRunwayData.name;
+    // Multi-Runway Traffic Distribution Model:
+    // Support parallel operations across all active runways (up to 5 in LTFM, 2 in LTFJ)
+    const arrCandidates = (rwyCfg && rwyCfg.activeArrRunways && rwyCfg.activeArrRunways.length > 0)
+      ? rwyCfg.activeArrRunways
+      : (rwyCfg?.arrRunwayData ? [rwyCfg.arrRunwayData] : []);
 
-      // Dynamic Departure Entry Selection: Distribute traffic across all available entries to eliminate bottlenecks
-      const depEntries = (rwyCfg.depRunwayData.entries && rwyCfg.depRunwayData.entries.length > 0)
-        ? rwyCfg.depRunwayData.entries
-        : (rwyCfg.mandatoryDepEntry ? [rwyCfg.mandatoryDepEntry] : [{ name: "Threshold", holdPos: rwyCfg.depRunwayData.threshold, lineupPos: rwyCfg.depRunwayData.threshold }]);
+    const depCandidates = (rwyCfg && rwyCfg.activeDepRunways && rwyCfg.activeDepRunways.length > 0)
+      ? rwyCfg.activeDepRunways
+      : (rwyCfg?.depRunwayData ? [rwyCfg.depRunwayData] : []);
 
-      let bestEntry = depEntries[0];
-      let bestEntryScore = Infinity;
-      for (let i = 0; i < depEntries.length; i++) {
-        const ent = depEntries[i];
-        const directDist = this.calcDistance(standCoord[0], standCoord[1], ent.holdPos[0], ent.holdPos[1]);
-        const usage = this.edgeUsageMap.get(ent.id) || 0;
-        const score = directDist + (usage * 120) + ((flightIndex % depEntries.length === i) ? -40 : 0);
-        if (score < bestEntryScore) {
-          bestEntryScore = score;
-          bestEntry = ent;
+    // Fallback if none configured
+    const defaultArr = isLTFM
+      ? { id: "16R", name: "RWY 16R", heading: 163, threshold: [41.2985855, 28.7067348], touchdown: [41.2879172, 28.7069417], exits: [{ name: "A6A", id: "A6A", pos: [41.2822509, 28.7070516] }, { name: "A7A", id: "A7A", pos: [41.2810494, 28.7070749] }, { name: "A5A", id: "A5A", pos: [41.2787340, 28.7071198] }] }
+      : { id: "06L", name: "RWY 06L", heading: 58, threshold: [40.8926406, 29.2932050], touchdown: [40.8955880, 29.3012193], exits: [{ name: "TWY F", id: "TWY F", pos: [40.9002179, 29.3137768] }, { name: "TWY L", id: "TWY L", pos: [40.8975949, 29.3066797] }, { name: "TWY K", id: "TWY K", pos: [40.8958676, 29.3019640] }] };
+
+    const defaultDep = isLTFM
+      ? { id: "35R", name: "RWY 35R", heading: 354, threshold: [41.2619440, 28.7277350], liftoff: [41.2988196, 28.7270160], entries: [{ id: "B1", name: "B1", holdPos: [41.2619400, 28.7252200], lineupPos: [41.2619440, 28.7277350] }] }
+      : { id: "06R", name: "RWY 06R", heading: 58, threshold: [40.8848978, 29.3027162], liftoff: [40.8987538, 29.3403920], entries: [{ id: "TWY A1", name: "TWY A1", holdPos: [40.8848511, 29.3025894], lineupPos: [40.8848978, 29.3027162] }] };
+
+    const validArrList = arrCandidates.length > 0 ? arrCandidates : [defaultArr];
+    const validDepList = depCandidates.length > 0 ? depCandidates : [defaultDep];
+
+    // 1. SELECT BEST ARRIVAL RUNWAY (Proximity from runway exits to stand + traffic load balancing)
+    let chosenArr = validArrList[0];
+    let bestArrScore = Infinity;
+
+    for (let i = 0; i < validArrList.length; i++) {
+      const cand = validArrList[i];
+      const exits = (cand.exits && cand.exits.length > 0) ? cand.exits : [{ pos: cand.threshold }];
+      // Find min distance from this runway's exits to assigned stand
+      let minExitDist = Infinity;
+      for (let e = 0; e < exits.length; e++) {
+        const d = this.calcDistance(exits[e].pos[0], exits[e].pos[1], standCoord[0], standCoord[1]);
+        if (d < minExitDist) minExitDist = d;
+      }
+      const usage = this.edgeUsageMap.get("ARR_" + cand.id) || 0;
+      // Proximity + load balancing + round-robin spread across parallel runways
+      const score = minExitDist + (usage * 180) + ((flightIndex % validArrList.length === i) ? -80 : 0);
+      if (score < bestArrScore) {
+        bestArrScore = score;
+        chosenArr = cand;
+      }
+    }
+    this.edgeUsageMap.set("ARR_" + chosenArr.id, (this.edgeUsageMap.get("ARR_" + chosenArr.id) || 0) + 1);
+
+    rwyThreshold = chosenArr.threshold;
+    rwyTouchdown = chosenArr.touchdown || chosenArr.threshold;
+    rwyExits = (chosenArr.exits && chosenArr.exits.length > 0) ? chosenArr.exits : [{ name: "Pist Sonu", id: "END", pos: chosenArr.rolloutEnd || chosenArr.threshold }];
+    arrRwyName = chosenArr.name;
+
+    // 2. SELECT BEST DEPARTURE RUNWAY & ENTRY (Proximity from stand to holding point + traffic load balancing)
+    let chosenDep = validDepList[0];
+    let chosenEntry = null;
+    let bestDepScore = Infinity;
+
+    for (let i = 0; i < validDepList.length; i++) {
+      const cand = validDepList[i];
+      const entries = (cand.entries && cand.entries.length > 0)
+        ? cand.entries
+        : [{ id: "THR", name: "Pist Başı", holdPos: cand.threshold, lineupPos: cand.threshold }];
+
+      // Find closest holding point on this candidate runway
+      let bestCandEntry = entries[0];
+      let minEntryDist = Infinity;
+      for (let e = 0; e < entries.length; e++) {
+        const ent = entries[e];
+        const d = this.calcDistance(standCoord[0], standCoord[1], ent.holdPos[0], ent.holdPos[1]);
+        const entUsage = this.edgeUsageMap.get(ent.id) || 0;
+        const entryScore = d + (entUsage * 100);
+        if (entryScore < minEntryDist) {
+          minEntryDist = entryScore;
+          bestCandEntry = ent;
         }
       }
 
-      rwyTakeoffHold = bestEntry.holdPos;
-      rwyTakeoffThreshold = bestEntry.lineupPos;
-      rwyLiftoff = rwyCfg.depRunwayData.liftoff;
-      depRwyName = rwyCfg.depRunwayData.name;
-      mandatoryEntryName = bestEntry.name;
-    } else if (isLTFM) {
-      rwyThreshold = [41.2985855, 28.7067348]; // 16R
-      rwyTouchdown = [41.2879172, 28.7069417];
-      rwyExits = [
-        { name: "A6A", pos: [41.2822509, 28.7070516] },
-        { name: "A7A", pos: [41.2810494, 28.7070749] },
-        { name: "A5A", pos: [41.2787340, 28.7071198] }
-      ];
-      rwyTakeoffHold = [41.2619400, 28.7252200];
-      rwyTakeoffThreshold = [41.2619440, 28.7277350];
-      rwyLiftoff = [41.2988196, 28.7270160];
-      arrRwyName = "RWY 16R";
-      depRwyName = "RWY 35R";
-      mandatoryEntryName = "B1";
-    } else {
-      rwyThreshold = [40.8926406, 29.2932050]; // 06L
-      rwyTouchdown = [40.8955880, 29.3012193];
-      rwyExits = [
-        { name: "TWY F", pos: [40.9002179, 29.3137768] },
-        { name: "TWY L", pos: [40.8975949, 29.3066797] },
-        { name: "TWY K", pos: [40.8958676, 29.3019640] }
-      ];
-      rwyTakeoffHold = [40.8848511, 29.3025894];
-      rwyTakeoffThreshold = [40.8848978, 29.3027162];
-      rwyLiftoff = [40.8987538, 29.3403920];
-      arrRwyName = "RWY 06L";
-      depRwyName = "RWY 06R";
-      mandatoryEntryName = "TWY A1";
+      const rwyUsage = this.edgeUsageMap.get("DEP_" + cand.id) || 0;
+      // Proximity + load balancing + round-robin spread across parallel departure runways
+      const score = minEntryDist + (rwyUsage * 180) + ((flightIndex % validDepList.length === i) ? -80 : 0);
+      if (score < bestDepScore) {
+        bestDepScore = score;
+        chosenDep = cand;
+        chosenEntry = bestCandEntry;
+      }
     }
+    this.edgeUsageMap.set("DEP_" + chosenDep.id, (this.edgeUsageMap.get("DEP_" + chosenDep.id) || 0) + 1);
+    if (chosenEntry) {
+      this.edgeUsageMap.set(chosenEntry.id, (this.edgeUsageMap.get(chosenEntry.id) || 0) + 1);
+    }
+
+    rwyTakeoffHold = chosenEntry.holdPos;
+    rwyTakeoffThreshold = chosenEntry.lineupPos || chosenDep.threshold;
+    rwyLiftoff = chosenDep.liftoff || chosenDep.threshold;
+    depRwyName = chosenDep.name;
+    mandatoryEntryName = chosenEntry.name;
 
     // Select optimal exit that minimizes taxi distance & apron traffic congestion to the assigned stand
     let exitChoice = rwyExits[0];

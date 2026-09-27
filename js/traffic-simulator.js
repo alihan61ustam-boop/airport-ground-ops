@@ -794,15 +794,15 @@ class GroundTrafficSimulator {
         const dEast = (flightB.lon - flightA.lon) * (111139 * Math.cos(midLatRad));
         const distSq = dEast * dEast + dNorth * dNorth;
 
-        // Physical collision / overlap zone: only aircraft within 26 meters can touch
-        if (distSq > 26 * 26) continue;
+        // Physical collision / overlap zone: center-to-center within 24 meters
+        if (distSq > 24 * 24) continue;
 
         // Project relative vector onto Flight A's heading frame
         const headingRad = (flightA.heading || 0) * (Math.PI / 180);
         const sinH = Math.sin(headingRad);
         const cosH = Math.cos(headingRad);
 
-        // Along-track distance: positive = Flight B is ahead of Flight A
+        // Along-track distance: positive = Flight B is ahead of Flight A; negative = Flight B is behind Flight A
         const distLong = dEast * sinH + dNorth * cosH;
         // Cross-track distance: perpendicular distance to Flight A's track
         const distLat = Math.abs(dEast * cosH - dNorth * sinH);
@@ -811,12 +811,21 @@ class GroundTrafficSimulator {
         let dHdg = Math.abs((flightA.heading || 0) - (flightB.heading || 0));
         if (dHdg > 180) dHdg = 360 - dHdg;
 
-        // If aircraft are on parallel taxiways (separated laterally by >= 12m) -> NO conflict
+        // If aircraft are on parallel taxiways (separated laterally by >= 11m) -> NO conflict
         const isParallelHeading = dHdg < 40 || dHdg > 140;
-        if (isParallelHeading && distLat >= 12) continue;
+        if (isParallelHeading && distLat >= 11) continue;
 
-        // RULE 1: Direct in-trail following on the same taxiway centerline (< 24m)
-        if (distLong > 0 && distLong < 24 && distLat < 8 && dHdg < 65) {
+        // An aircraft moving forward should NEVER yield or stop for an aircraft BEHIND it
+        // (Flight B is behind Flight A when distLong <= 0)
+        if (distLong <= 0) {
+          continue; // Flight B is behind Flight A; Flight A proceeds freely!
+        }
+
+        // Flight B is ahead of Flight A (distLong > 0)
+
+        // RULE 1: Direct in-trail following along taxiway centerline or curve (< 22m physical buffer)
+        // User requested: "aralarındaki güvenli mesafeyi kaldır birbirlerinin üstünde gitmesinler yeter"
+        if (distLong > 0 && distLong < 22 && distLat < 10 && dHdg < 65) {
           flightA.isQueued = true;
           flightA.queueReason = "following";
           flightA.conflictWith = flightB.callsign;
@@ -825,16 +834,22 @@ class GroundTrafficSimulator {
         }
 
         // RULE 2: Junction / Intersection / Merge: Düz gelene öncelik
-        if (this.shouldYield(flightA, flightB)) {
-          flightA.isQueued = true;
-          flightA.queueReason = "junction_yield";
-          flightA.conflictWith = flightB.callsign;
-          conflictFound = true;
-          break;
+        // "düz yola öncelik versinler ama burda yolu kullanan başka kimse yok yinede yola girmiyorlar bunu düzeltelim"
+        // IMPORTANT: Only yield at a junction if Flight B is ACTIVELY MOVING on the intersection!
+        // If Flight B is stopped (speed < 2) or queued, Flight B is NOT occupying/crossing the path!
+        const isBActivelyMoving = (flightB.speed >= 2) && !flightB.isQueued;
+        if (isBActivelyMoving && distLong > 0 && distLong < 24) {
+          if (this.shouldYield(flightA, flightB, distLong)) {
+            flightA.isQueued = true;
+            flightA.queueReason = "junction_yield";
+            flightA.conflictWith = flightB.callsign;
+            conflictFound = true;
+            break;
+          }
         }
 
         // RULE 3: Runway Takeoff Roll Safety: If ahead on runway roll corridor
-        if (flightA.phase === "takeoff" && distLong > 0 && distLong < 350 && distLat < 25) {
+        if (flightA.phase === "takeoff" && distLong > 0 && distLong < 300 && distLat < 20) {
           flightA.isQueued = true;
           flightA.queueReason = "takeoff_separation";
           flightA.conflictWith = flightB.callsign;
@@ -901,26 +916,27 @@ class GroundTrafficSimulator {
    * Deterministic yield rule:
    * 1. Straight-moving aircraft has priority over turning and runway exit traffic.
    * 2. Turning aircraft has priority over runway exit traffic.
-   * 3. Moving aircraft has priority over stopped aircraft.
+   * 3. On curves or equal ranks: The aircraft physically ahead (distLong > 0) moves; trailing yields.
+   *    Never yield to an aircraft behind you.
    */
-  shouldYield(fA, fB) {
+  shouldYield(fA, fB, distLong = 10) {
     const rankA = this.getPriorityRank(fA);
     const rankB = this.getPriorityRank(fB);
 
-    // Lower rank = higher priority
-    if (rankA > rankB) return true;  // fA yields to fB (e.g. turning/exit yields to straight)
-    if (rankA < rankB) return false; // fA has priority over fB (straight over turning/exit)
+    // If fA is straight (rank 1) and fB is turning/exit (rank >= 2), straight NEVER yields!
+    if (rankA < rankB) return false;
+
+    // If fA is turning/exit (rank >= 2) and fB is straight (rank 1), fA yields to straight traffic!
+    if (rankA > rankB) return true;
 
     // Equal rank tie-breaker:
-    if (!fA.isQueued && fB.isQueued) return false;
-    if (fA.isQueued && !fB.isQueued) return true;
+    // If both are turning (e.g. curved connector or both rank 2):
+    // "ikinci görselde her iki taraf içinde düz olmadığından sıkıntı doğruyor"
+    // Whichever plane is physically ahead moves first!
+    if (distLong > 0) return true;  // fB is ahead of fA, so fA yields to the plane in front
+    if (distLong < 0) return false; // fA is ahead of fB, so fA proceeds
 
-    if (fA.speed > fB.speed + 2) return false;
-    if (fB.speed > fA.speed + 2) return true;
-
-    if (fA.startTime !== fB.startTime) {
-      return fA.startTime > fB.startTime;
-    }
+    // Tie-breaker if identical position
     return String(fA.id) > String(fB.id);
   }
 

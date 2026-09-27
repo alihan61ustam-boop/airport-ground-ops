@@ -1922,170 +1922,228 @@ body {
   color: #9ab4a6;
 }
 
-/* 2-Column Runway Config Grid */
-.rwy-config-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
+/* Multi-Runway Management Grid & Cards */
+.multi-runway-modal {
+  max-width: 860px;
 }
 
-.rwy-config-col {
-  background: rgba(18, 51, 38, 0.5);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.rwy-config-col.arr-col {
-  border-top: 3px solid var(--accent-green);
-}
-
-.rwy-config-col.dep-col {
-  border-top: 3px solid #f59e0b;
-}
-
-.col-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.col-icon {
-  font-size: 18px;
-}
-
-.col-title {
-  display: block;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  color: #f8fafc;
-}
-
-.col-desc {
-  display: block;
-  font-size: 10px;
-  color: #94a3b8;
-}
-
-.form-control-rwy {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 13px;
-  color: #38bdf8;
-}
-
-/* Mandatory Runway Entry Styling */
-.badge-mandatory {
-  display: inline-block;
-  font-size: 9px;
-  font-weight: 800;
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  padding: 1px 5px;
-  border-radius: 4px;
-  margin-left: 6px;
-  vertical-align: middle;
-}
-
-.form-control-mandatory {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 13px;
-  border-color: #f59e0b;
-  color: #fef08a;
-  background-color: rgba(245, 158, 11, 0.08);
-}
-
-.form-control-mandatory:focus {
-  border-color: #eab308;
-  box-shadow: 0 0 10px rgba(234, 179, 8, 0.35);
-}
-
-.field-help-box {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin-top: 8px;
-  padding: 8px 10px;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  border-radius: 6px;
-  font-size: 10.5px;
-  color: #fca5a5;
-  line-height: 1.4;
-}
-
-.field-help-box .help-icon {
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-/* Runway Exits List */
-.exit-actions-bar {
+.section-header-flex {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.btn-link {
-  background: none;
-  border: none;
-  color: #38bdf8;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: underline;
-  padding: 0;
-}
-
-.btn-link:hover {
-  color: #7dd3fc;
-}
-
-.checkbox-list-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  margin-bottom: 8px;
+  flex-wrap: wrap;
   gap: 6px;
-  max-height: 160px;
-  overflow-y: auto;
-  padding: 6px;
-  background: rgba(9, 32, 23, 0.6);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
 }
 
-.exit-checkbox-label {
+.multi-rwy-hint {
+  font-size: 11px;
+  color: #38bdf8;
+  font-style: italic;
+}
+
+.multi-runway-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 12px;
+}
+
+.runway-card-item {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.runway-card-item.active {
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.runway-card-item.passive {
+  opacity: 0.55;
+  border-color: rgba(255, 255, 255, 0.1);
+  filter: grayscale(0.5);
+}
+
+.runway-card-item.highlight-card {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.6) !important;
+}
+
+.rwy-card-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 8px;
-  background: rgba(18, 51, 38, 0.7);
-  border: 1px solid var(--border-color);
-  border-radius: 5px;
-  font-size: 11px;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 8px;
+}
+
+.rwy-name-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rwy-header-icon {
+  font-size: 18px;
+}
+
+.rwy-title-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rwy-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #f8fafc;
   font-family: var(--font-mono);
-  color: #e2e8f0;
+}
+
+.rwy-badge-role {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  width: fit-content;
+  text-transform: uppercase;
+}
+
+.rwy-badge-role.dep {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.rwy-badge-role.arr {
+  background: rgba(2, 132, 199, 0.2);
+  color: #7dd3fc;
+  border: 1px solid rgba(2, 132, 199, 0.4);
+}
+
+.rwy-badge-role.both {
+  background: rgba(168, 85, 247, 0.2);
+  color: #d8b4fe;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
+.btn-rwy-status {
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 800;
   cursor: pointer;
-  user-select: none;
+  border: 1px solid transparent;
   transition: all 0.15s ease;
 }
 
-.exit-checkbox-label:hover {
-  background: rgba(27, 69, 52, 0.9);
-  border-color: var(--accent-green);
+.btn-rwy-status.is-active {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border-color: #10b981;
 }
 
-.exit-checkbox-label input[type="checkbox"] {
-  accent-color: var(--accent-neon-cyan);
+.btn-rwy-status.is-passive {
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.rwy-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 11.5px;
+}
+
+.rwy-control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rwy-row-label {
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.rwy-dir-action-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rwy-dir-display {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #fde047;
+  font-weight: 700;
+}
+
+.btn-flip-dir {
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 5px;
+  padding: 3px 8px;
   cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-flip-dir:hover {
+  background: rgba(56, 189, 248, 0.3);
+  border-color: #38bdf8;
+}
+
+.rwy-role-pills {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-role-pill {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-role-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+}
+
+.btn-role-pill.active.dep {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+  color: #6ee7b7;
+}
+
+.btn-role-pill.active.arr {
+  background: rgba(2, 132, 199, 0.25);
+  border-color: #0284c7;
+  color: #7dd3fc;
+}
+
+.btn-role-pill.active.both {
+  background: rgba(168, 85, 247, 0.25);
+  border-color: #a855f7;
+  color: #d8b4fe;
 }
 
 /* Operation Summary Banner */
@@ -3232,6 +3290,27 @@ body {
   background: rgba(12, 74, 110, 0.94);
   border: 1.5px solid #0284c7;
   box-shadow: 0 0 18px rgba(2, 132, 199, 0.6), 0 6px 16px rgba(0, 0, 0, 0.75);
+}
+
+.atc-rwy-plate.both {
+  background: rgba(88, 28, 135, 0.94);
+  border: 1.5px solid #a855f7;
+  box-shadow: 0 0 18px rgba(168, 85, 247, 0.6), 0 6px 16px rgba(0, 0, 0, 0.75);
+}
+
+.atc-rwy-plate.passive {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1.5px dashed rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  opacity: 0.65;
+}
+
+.atc-rwy-plate.both .rwy-plate-badge {
+  color: #d8b4fe;
+}
+
+.atc-rwy-plate.passive .rwy-plate-badge {
+  color: #94a3b8;
 }
 
 .rwy-plate-top {

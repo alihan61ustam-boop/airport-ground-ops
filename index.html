@@ -521,89 +521,35 @@
 
   </main>
 
-  <!-- Runway & Direction ATC Configuration Modal -->
+  <!-- Multi-Runway Operations & Traffic Distribution Modal -->
   <div id="runwayModal" class="modal-overlay hidden">
-    <div class="modal-card modal-runway-card">
+    <div class="modal-card modal-runway-card multi-runway-modal">
       <div class="modal-header">
         <div class="modal-title-wrap">
-          <span class="modal-badge">ATC GROUND CONTROL</span>
-          <h3 class="modal-title">Pist & Operasyon Yönü Yönetimi</h3>
-          <p class="modal-subtitle">Aktif kalkış/iniş pisti, zorunlu giriş taksi yolu ve esnek çıkış noktaları</p>
+          <span class="modal-badge">ATC GROUND CONTROL · MULTI-RUNWAY OPS</span>
+          <h3 class="modal-title">Çoklu Pist & Operasyon Yönü Yönetimi</h3>
+          <p class="modal-subtitle">Tüm pistlerin aktif/pasif durumunu, yönünü (Kuzey/Güney) ve rolünü (Kalkış/İniş) belirleyin; trafik otomatik dağıtılsın</p>
         </div>
         <button id="btnCloseRunwayModal" class="btn-close-modal" title="Kapat">✕</button>
       </div>
 
       <div class="modal-body">
-        <!-- Quick Preset Selection -->
+        <!-- Quick Operation Presets -->
         <div class="modal-section">
-          <div class="section-label">HIZLI OPERASYON YÖNÜ ŞABLONLARI:</div>
+          <div class="section-label">HIZLI OPERASYON YÖNÜ & DAĞITIM ŞABLONLARI:</div>
           <div id="runwayPresetButtons" class="preset-buttons-grid">
-            <!-- Dynamically populated -->
+            <!-- Dynamically populated from RunwayConfigManager presets -->
           </div>
         </div>
 
-        <div class="rwy-config-grid">
-          <!-- Landing Runway & Direction Column -->
-          <div class="rwy-config-col arr-col">
-            <div class="col-header arr">
-              <span class="col-icon">🛬</span>
-              <div>
-                <span class="col-title">İNİŞ PİSTİ & YÖNÜ (ARRIVALS)</span>
-                <span class="col-desc">Piste inen uçakların iniş yönü</span>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="selectArrRunway">Aktif İniş Pisti:</label>
-              <select id="selectArrRunway" class="form-control form-control-rwy">
-                <!-- Dynamically populated -->
-              </select>
-            </div>
-
-            <div class="form-group">
-              <div class="exit-actions-bar">
-                <label class="form-label" style="margin-bottom: 0;">Pist Çıkışları (İstenilen Noktadan Çıkış):</label>
-                <button type="button" id="btnSelectAllExits" class="btn-link">Tümüne İzin Ver</button>
-              </div>
-              <p class="field-help-text" style="margin-bottom: 8px;">
-                İniş yapan uçaklar pist koşusunun ardından aşağıdaki uygun/boş taksi yollarından istenilen noktadan serbestçe çıkış yapabilir:
-              </p>
-              <div id="runwayExitsContainer" class="checkbox-list-container">
-                <!-- Dynamically populated checkboxes -->
-              </div>
-            </div>
+        <!-- Multi-Runway Complexes Configuration Grid -->
+        <div class="modal-section">
+          <div class="section-header-flex">
+            <span class="section-label">HAVALİMANI PİSTLERİ (HER BİR PİSTİN DURUMU, YÖNÜ VE ROLÜ):</span>
+            <span class="multi-rwy-hint">💡 Trafiğin sıkışmaması için kalkış ve inişler en yakın aktif piste dağıtılır.</span>
           </div>
-
-          <!-- Departure Runway & Direction Column -->
-          <div class="rwy-config-col dep-col">
-            <div class="col-header dep">
-              <span class="col-icon">🛫</span>
-              <div>
-                <span class="col-title">KALKIŞ PİSTİ & YÖNÜ (DEPARTURES)</span>
-                <span class="col-desc">Pistten havalanan uçakların yönü</span>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="selectDepRunway">Aktif Kalkış Pisti:</label>
-              <select id="selectDepRunway" class="form-control form-control-rwy">
-                <!-- Dynamically populated -->
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="selectMandatoryEntry">
-                Zorunlu Pist Giriş Taksi Yolu:
-                <span class="badge-mandatory">ZORUNLU KURAL</span>
-              </label>
-              <select id="selectMandatoryEntry" class="form-control form-control-mandatory">
-                <!-- Dynamically populated based on chosen departure runway -->
-              </select>
-              <div class="field-help-box">
-                <span class="help-icon">⛔</span>
-                <span>Kalkış yapacak tüm uçaklar standlarından piste ilerlerken <b>yalnızca burada belirlenen taksi yolundan</b> piste giriş yapacaktır. Başka bir yoldan piste giriş yapılamaz.</span>
-              </div>
-            </div>
+          <div id="multiRunwayCardsGrid" class="multi-runway-grid">
+            <!-- Dynamically populated runway cards -->
           </div>
         </div>
 
@@ -616,7 +562,7 @@
 
       <div class="modal-footer">
         <button id="btnCancelRunwayModal" class="btn">Kapat</button>
-        <button id="btnApplyRunwayConfig" class="btn btn-primary">⚡ Uygula & Trafiğe Yansıt</button>
+        <button id="btnApplyRunwayConfig" class="btn btn-primary">⚡ Uygula & Rotaları Yeniden Dağıt</button>
       </div>
     </div>
   </div>

@@ -1872,7 +1872,7 @@ function showToast(msg) {
 }
 
 /* ==========================================================================
-   RUNWAY OPERATIONS & DIRECTION MANAGEMENT (ATC CONTROL)
+   MULTI-RUNWAY OPERATIONS & TRAFFIC DISTRIBUTION (ATC CONTROL)
    ========================================================================== */
 
 function setupRunwayConfigEvents() {
@@ -1881,10 +1881,6 @@ function setupRunwayConfigEvents() {
   const btnCancel = document.getElementById("btnCancelRunwayModal");
   const btnApply = document.getElementById("btnApplyRunwayConfig");
   const modal = document.getElementById("runwayModal");
-  const selectArr = document.getElementById("selectArrRunway");
-  const selectDep = document.getElementById("selectDepRunway");
-  const selectEntry = document.getElementById("selectMandatoryEntry");
-  const btnSelectAll = document.getElementById("btnSelectAllExits");
 
   if (btnOpen) btnOpen.addEventListener("click", () => openRunwayModal());
   if (btnClose) btnClose.addEventListener("click", closeRunwayModal);
@@ -1893,43 +1889,6 @@ function setupRunwayConfigEvents() {
   if (modal) {
     modal.addEventListener("click", (e) => {
       if (e.target === modal) closeRunwayModal();
-    });
-  }
-
-  // When departure runway changes, re-populate its mandatory entry options
-  if (selectDep) {
-    selectDep.addEventListener("change", () => {
-      const depRwy = selectDep.value;
-      populateMandatoryEntryDropdown(currentIcao, depRwy);
-      clearPresetHighlight();
-      updateModalSummaryPreview();
-    });
-  }
-
-  // When arrival runway changes, re-populate available exits checklist
-  if (selectArr) {
-    selectArr.addEventListener("change", () => {
-      const arrRwy = selectArr.value;
-      populateExitsChecklist(currentIcao, arrRwy);
-      clearPresetHighlight();
-      updateModalSummaryPreview();
-    });
-  }
-
-  if (selectEntry) {
-    selectEntry.addEventListener("change", () => {
-      clearPresetHighlight();
-      updateModalSummaryPreview();
-    });
-  }
-
-  if (btnSelectAll) {
-    btnSelectAll.addEventListener("click", () => {
-      document.querySelectorAll("#runwayExitsContainer input[type='checkbox']").forEach(cb => {
-        cb.checked = true;
-      });
-      clearPresetHighlight();
-      updateModalSummaryPreview();
     });
   }
 
@@ -1950,38 +1909,27 @@ function clearPresetHighlight() {
   document.querySelectorAll("#runwayPresetButtons .btn-preset").forEach(b => b.classList.remove("active"));
 }
 
-function openRunwayModal(preselectRunwayId = null) {
+function openRunwayModal(preselectComplexId = null) {
   if (!window.RunwayConfigManager) return;
   const cfg = window.RunwayConfigManager.getCurrentConfig(currentIcao);
-  const catalog = window.RunwayConfigManager.catalogs[currentIcao];
-  if (!catalog) return;
-
-  // Determine preselection if runway was clicked on map
-  let targetArr = cfg.arrRunway;
-  let targetDep = cfg.depRunway;
-
-  if (preselectRunwayId) {
-    const cleanRef = String(preselectRunwayId).replace(/[^0-9LRC]/gi, "");
-    for (const rwyKey of Object.keys(catalog.runways)) {
-      if (cleanRef.includes(rwyKey) || rwyKey.includes(cleanRef) || String(preselectRunwayId).includes(rwyKey)) {
-        if (cleanRef.startsWith("17") || cleanRef.startsWith("35") || cleanRef.startsWith("06R") || cleanRef.startsWith("24L")) {
-          targetDep = rwyKey;
-        } else {
-          targetArr = rwyKey;
-        }
-        break;
-      }
-    }
-  }
 
   populatePresetButtons(currentIcao, cfg.preset);
-  populateRunwayDropdowns(currentIcao, targetArr, targetDep);
-  populateMandatoryEntryDropdown(currentIcao, targetDep, cfg.mandatoryDepEntry?.id);
-  populateExitsChecklist(currentIcao, targetArr, cfg.allowedExits.map(e => e.id));
-  updateModalSummaryPreview();
+  populateMultiRunwayGrid(currentIcao);
+  updateMultiRunwaySummary(currentIcao);
 
   const modal = document.getElementById("runwayModal");
   if (modal) modal.classList.remove("hidden");
+
+  if (preselectComplexId) {
+    setTimeout(() => {
+      const card = document.querySelector(`.runway-card-item[data-complex-id='${preselectComplexId}']`);
+      if (card) {
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+        card.classList.add("highlight-card");
+        setTimeout(() => card.classList.remove("highlight-card"), 1600);
+      }
+    }, 100);
+  }
 }
 
 function closeRunwayModal() {
@@ -2011,222 +1959,232 @@ function populatePresetButtons(icao, activePresetId = null) {
   container.querySelectorAll(".btn-preset").forEach(btn => {
     btn.addEventListener("click", () => {
       const pId = btn.dataset.preset;
-      const presetObj = presets[pId];
-      if (!presetObj) return;
-
       container.querySelectorAll(".btn-preset").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
 
-      // Apply preset values to UI dropdowns
-      const selectArr = document.getElementById("selectArrRunway");
-      const selectDep = document.getElementById("selectDepRunway");
-      if (selectArr) selectArr.value = presetObj.arrRunway;
-      if (selectDep) selectDep.value = presetObj.depRunway;
-
-      populateMandatoryEntryDropdown(icao, presetObj.depRunway, presetObj.mandatoryDepEntry);
-      populateExitsChecklist(icao, presetObj.arrRunway, presetObj.allowedExits);
-      updateModalSummaryPreview();
+      window.RunwayConfigManager.applyPreset(icao, pId);
+      populateMultiRunwayGrid(icao);
+      updateMultiRunwaySummary(icao);
     });
   });
 }
 
-function populateRunwayDropdowns(icao, selectedArr, selectedDep) {
-  const catalog = window.RunwayConfigManager.catalogs[icao];
-  if (!catalog) return;
+function populateMultiRunwayGrid(icao) {
+  const container = document.getElementById("multiRunwayCardsGrid");
+  if (!container || !window.RunwayConfigManager) return;
 
-  const selectArr = document.getElementById("selectArrRunway");
-  const selectDep = document.getElementById("selectDepRunway");
-
-  if (selectArr) {
-    let arrHtml = "";
-    Object.values(catalog.runways).forEach(rwy => {
-      const isSel = (rwy.id === selectedArr) ? "selected" : "";
-      arrHtml += `<option value="${rwy.id}" ${isSel}>${rwy.name} (${rwy.heading}° - İniş)</option>`;
-    });
-    selectArr.innerHTML = arrHtml;
-  }
-
-  if (selectDep) {
-    let depHtml = "";
-    Object.values(catalog.runways).forEach(rwy => {
-      const isSel = (rwy.id === selectedDep) ? "selected" : "";
-      depHtml += `<option value="${rwy.id}" ${isSel}>${rwy.name} (${rwy.heading}° - Kalkış)</option>`;
-    });
-    selectDep.innerHTML = depHtml;
-  }
-}
-
-function populateMandatoryEntryDropdown(icao, depRwyId, selectedEntryId = null) {
-  const catalog = window.RunwayConfigManager.catalogs[icao];
-  const select = document.getElementById("selectMandatoryEntry");
-  if (!catalog || !select) return;
-
-  const rwy = catalog.runways[depRwyId];
-  if (!rwy || !rwy.entries) return;
-
+  const complexes = window.RunwayConfigManager.getAllRunwayComplexes(icao);
   let html = "";
-  rwy.entries.forEach((entry, idx) => {
-    const isSel = (entry.id === selectedEntryId || (!selectedEntryId && idx === 0)) ? "selected" : "";
-    html += `<option value="${entry.id}" ${isSel}>TWY ${entry.name} - ${entry.desc}</option>`;
-  });
-  select.innerHTML = html;
-}
 
-function populateExitsChecklist(icao, arrRwyId, selectedExitIds = []) {
-  const catalog = window.RunwayConfigManager.catalogs[icao];
-  const container = document.getElementById("runwayExitsContainer");
-  if (!catalog || !container) return;
+  complexes.forEach(c => {
+    const curRwy = c.currentRwyData || {};
+    const hdg = curRwy.heading || 0;
+    const isNorth = (hdg >= 300 || hdg <= 60);
+    const dirText = isNorth ? "Kuzey" : "Güney";
+    const statusClass = c.active ? "active" : "passive";
+    const role = c.role || "dep";
 
-  const rwy = catalog.runways[arrRwyId];
-  if (!rwy || !rwy.exits) return;
-
-  let html = "";
-  rwy.exits.forEach(exit => {
-    const isChecked = (selectedExitIds.length === 0 || selectedExitIds.includes(exit.id)) ? "checked" : "";
     html += `
-      <label class="exit-checkbox-label">
-        <input type="checkbox" value="${exit.id}" ${isChecked}>
-        <span><b>${exit.name}</b> <small style="color: var(--text-muted);">(${exit.desc || 'Çıkış'})</small></span>
-      </label>
+      <div class="runway-card-item ${statusClass}" data-complex-id="${c.id}">
+        <div class="rwy-card-header">
+          <div class="rwy-name-box">
+            <span class="rwy-header-icon">${role === 'arr' ? '🛬' : (role === 'both' ? '🔄' : '🛫')}</span>
+            <div class="rwy-title-col">
+              <span class="rwy-title">${c.name}</span>
+              <span class="rwy-badge-role ${role}">${role === 'dep' ? 'Kalkış Pisti' : (role === 'arr' ? 'İniş Pisti' : 'Karma Pist (DEP+ARR)')}</span>
+            </div>
+          </div>
+          <button type="button" class="btn-rwy-status ${c.active ? 'is-active' : 'is-passive'}" data-action="toggle-active">
+            ${c.active ? '🟢 AKTİF' : '⚪ PASİF'}
+          </button>
+        </div>
+
+        <div class="rwy-card-body">
+          <!-- Direction Switcher -->
+          <div class="rwy-control-row">
+            <span class="rwy-row-label">Operasyon Yönü:</span>
+            <div class="rwy-dir-action-group">
+              <span class="rwy-dir-display">
+                <b>Pist ${c.selectedDirection}</b> (${hdg}° · ${dirText})
+              </span>
+              <button type="button" class="btn-flip-dir" data-action="flip-direction" title="Pistin başını ve sonunu tersine çevir">
+                ⇄ Yönü Değiştir (${c.otherDirection})
+              </button>
+            </div>
+          </div>
+
+          <!-- Role Selection (DEP / ARR / BOTH) -->
+          <div class="rwy-control-row">
+            <span class="rwy-row-label">Pist Rolü:</span>
+            <div class="rwy-role-pills">
+              <button type="button" class="btn-role-pill ${role === 'dep' ? 'active dep' : ''}" data-role="dep" title="Yalnızca Kalkış">
+                🛫 Sadece Kalkış
+              </button>
+              <button type="button" class="btn-role-pill ${role === 'arr' ? 'active arr' : ''}" data-role="arr" title="Yalnızca İniş">
+                🛬 Sadece İniş
+              </button>
+              <button type="button" class="btn-role-pill ${role === 'both' ? 'active both' : ''}" data-role="both" title="Kalkış ve İniş Birlikte">
+                🔄 Çift Yönlü Karma
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     `;
   });
 
   container.innerHTML = html;
 
-  container.querySelectorAll("input[type='checkbox']").forEach(cb => {
-    cb.addEventListener("change", () => {
-      clearPresetHighlight();
-      updateModalSummaryPreview();
+  // Attach interactive listeners to each runway card
+  container.querySelectorAll(".runway-card-item").forEach(card => {
+    const complexId = card.dataset.complexId;
+
+    // Toggle Active / Passive
+    const btnStatus = card.querySelector("[data-action='toggle-active']");
+    if (btnStatus) {
+      btnStatus.addEventListener("click", () => {
+        window.RunwayConfigManager.toggleRunwayActive(complexId, icao);
+        populateMultiRunwayGrid(icao);
+        updateMultiRunwaySummary(icao);
+        clearPresetHighlight();
+      });
+    }
+
+    // Flip Direction (e.g. 16R ⇄ 34L or 35R ⇄ 17L)
+    const btnFlip = card.querySelector("[data-action='flip-direction']");
+    if (btnFlip) {
+      btnFlip.addEventListener("click", () => {
+        window.RunwayConfigManager.flipRunwayDirection(complexId, icao);
+        populateMultiRunwayGrid(icao);
+        updateMultiRunwaySummary(icao);
+        clearPresetHighlight();
+      });
+    }
+
+    // Role Buttons
+    card.querySelectorAll(".btn-role-pill").forEach(pill => {
+      pill.addEventListener("click", () => {
+        const role = pill.dataset.role;
+        window.RunwayConfigManager.setRunwayRole(complexId, role, icao);
+        populateMultiRunwayGrid(icao);
+        updateMultiRunwaySummary(icao);
+        clearPresetHighlight();
+      });
     });
   });
 }
 
-function updateModalSummaryPreview() {
+function updateMultiRunwaySummary(icao) {
   const bannerText = document.getElementById("runwayConfigSummaryText");
-  const selectArr = document.getElementById("selectArrRunway");
-  const selectDep = document.getElementById("selectDepRunway");
-  const selectEntry = document.getElementById("selectMandatoryEntry");
-  if (!bannerText || !selectArr || !selectDep) return;
+  if (!bannerText || !window.RunwayConfigManager) return;
 
-  const arrVal = selectArr.options[selectArr.selectedIndex]?.text || selectArr.value;
-  const depVal = selectDep.options[selectDep.selectedIndex]?.text || selectDep.value;
-  const entryVal = selectEntry?.options[selectEntry.selectedIndex]?.text || selectEntry?.value || "";
+  const depRunways = window.RunwayConfigManager.getActiveDepRunways(icao);
+  const arrRunways = window.RunwayConfigManager.getActiveArrRunways(icao);
+  const complexes = window.RunwayConfigManager.getAllRunwayComplexes(icao);
+  const activeCount = complexes.filter(c => c.active).length;
 
-  const checkedCount = document.querySelectorAll("#runwayExitsContainer input:checked").length;
-  const totalCount = document.querySelectorAll("#runwayExitsContainer input").length;
+  const depNames = depRunways.map(r => r.id).join(", ") || "Yok";
+  const arrNames = arrRunways.map(r => r.id).join(", ") || "Yok";
 
   bannerText.innerHTML = `
-    <b>İniş:</b> ${arrVal} (Kullanılabilir Çıkış: ${checkedCount}/${totalCount}) &nbsp;|&nbsp; 
-    <b>Kalkış:</b> ${depVal} &nbsp;|&nbsp; 
-    <b style="color: #fca5a5;">Zorunlu Giriş Taksi Yolu:</b> <span style="color: #fef08a; font-family: var(--font-mono); font-weight: bold;">${entryVal}</span>
+    <b>⚡ ${activeCount} Pist Aktif</b> &nbsp;|&nbsp; 
+    <span style="color: #6ee7b7;">🛬 İniş: <b>${arrNames}</b></span> &nbsp;|&nbsp; 
+    <span style="color: #fde047;">🛫 Kalkış: <b>${depNames}</b></span> &nbsp;|&nbsp; 
+    <small style="color: #94a3b8;">Uçaklar stand konumlarına göre en yakın aktif piste otomatik dağıtılır.</small>
   `;
 }
 
 function applyRunwayConfigFromModal() {
   if (!window.RunwayConfigManager) return;
 
-  const selectArr = document.getElementById("selectArrRunway");
-  const selectDep = document.getElementById("selectDepRunway");
-  const selectEntry = document.getElementById("selectMandatoryEntry");
+  window.RunwayConfigManager.syncActiveConfig(currentIcao);
+  window.RunwayConfigManager.notifyChange(currentIcao);
 
-  const arrRunway = selectArr ? selectArr.value : null;
-  const depRunway = selectDep ? selectDep.value : null;
-  const mandatoryDepEntry = selectEntry ? selectEntry.value : null;
-
-  const checkedBoxes = Array.from(document.querySelectorAll("#runwayExitsContainer input:checked"));
-  let allowedExits = checkedBoxes.map(cb => cb.value);
-
-  if (allowedExits.length === 0) {
-    allowedExits = Array.from(document.querySelectorAll("#runwayExitsContainer input")).map(cb => cb.value);
-  }
-
-  // Update configuration in RunwayConfigManager
-  window.RunwayConfigManager.updateCustomConfig(currentIcao, {
-    arrRunway,
-    depRunway,
-    mandatoryDepEntry,
-    allowedExits,
-    exitMode: "flexible"
-  });
-
-  // Rebuild simulation trajectories immediately with zero disruption
+  // Recalculate and redistribute all flight trajectories immediately
   if (trafficSim) {
     trafficSim.rebuildFlightTrajectories();
   }
 
   closeRunwayModal();
 
-  const cfg = window.RunwayConfigManager.getCurrentConfig(currentIcao);
-  showToast(`Pist Operasyonu Güncellendi: ${cfg.arrRunway} İniş / ${cfg.depRunway} Kalkış (Zorunlu Giriş: ${cfg.mandatoryDepEntry.name})`);
+  const depRunways = window.RunwayConfigManager.getActiveDepRunways(currentIcao);
+  const arrRunways = window.RunwayConfigManager.getActiveArrRunways(currentIcao);
+  showToast(`⚡ Çoklu Pist Operasyonu Güncellendi: İniş [${arrRunways.map(r => r.id).join(', ')}] / Kalkış [${depRunways.map(r => r.id).join(', ')}]`);
 }
 
 function updateRunwayHeaderSummary(cfg) {
   const el = document.getElementById("headerRunwaySummary");
-  if (!el || !cfg) return;
-  const depHdg = cfg.depRunwayData?.heading || 354;
-  const dir = (depHdg >= 300 || depHdg <= 60) ? "Kuzey" : "Güney";
-  el.textContent = `${cfg.arrRunway} İniş / ${cfg.depRunway} Kalkış (${dir} Yönü)`;
+  if (!el || !cfg || !window.RunwayConfigManager) return;
+  const depList = window.RunwayConfigManager.getActiveDepRunways(currentIcao).map(r => r.id);
+  const arrList = window.RunwayConfigManager.getActiveArrRunways(currentIcao).map(r => r.id);
+  const totalActive = window.RunwayConfigManager.getAllRunwayComplexes(currentIcao).filter(c => c.active).length;
+  el.textContent = `${totalActive} Pist Aktif (${arrList.join('/')} İniş · ${depList.join('/')} Kalkış)`;
 }
 
 function renderRunwayATCIndicators(cfg) {
-  if (!runwayOverlayLayerGroup || !cfg) return;
+  if (!runwayOverlayLayerGroup || !window.RunwayConfigManager) return;
   runwayOverlayLayerGroup.clearLayers();
 
-  // 1. High-Visibility Departure Runway Plate on Map
-  if (cfg.depRunwayData && cfg.depRunwayData.threshold) {
-    const depHdg = cfg.depRunwayData.heading || 354;
-    const depDirText = (depHdg >= 300 || depHdg <= 60) ? "KUZEYE DOĞRU" : "GÜNEYE DOĞRU";
-    const depHtml = `
-      <div class="atc-rwy-plate dep" title="Kalkış Pisti: ${cfg.depRunwayData.name}">
-        <div class="rwy-plate-top">
-          <span class="rwy-plate-badge">🛫 KALKIŞ PİSTİ</span>
-          <span class="rwy-wind-chip">RÜZGAR UYUMLU</span>
-        </div>
-        <div class="rwy-plate-main">
-          <span class="rwy-plate-name">${cfg.depRunwayData.name}</span>
-          <span class="rwy-plate-heading">▲ ${depDirText} (${depHdg}°)</span>
-        </div>
-      </div>
-    `;
-    const depIcon = L.divIcon({
-      html: depHtml,
-      className: "atc-rwy-plate-container",
-      iconSize: [210, 56],
-      iconAnchor: [105, 28]
-    });
-    const depMarker = L.marker(cfg.depRunwayData.threshold, { icon: depIcon, zIndexOffset: 2500 })
-      .bindTooltip(`<b>Aktif Kalkış Pisti: ${cfg.depRunwayData.name}</b><br>Kalkış Yönü: ${depDirText} (${depHdg}°)<br><span style="color:#38bdf8;">👉 Değiştirmek İçin Tıklayın</span>`, { direction: "top" })
-      .on("click", () => openRunwayModal());
-    runwayOverlayLayerGroup.addLayer(depMarker);
-  }
+  const complexes = window.RunwayConfigManager.getAllRunwayComplexes(currentIcao);
 
-  // 2. High-Visibility Arrival Runway Plate on Map
-  if (cfg.arrRunwayData && cfg.arrRunwayData.touchdown) {
-    const arrHdg = cfg.arrRunwayData.heading || 163;
-    const arrDirText = (arrHdg >= 300 || arrHdg <= 60) ? "KUZEYE DOĞRU" : "GÜNEYE DOĞRU";
-    const arrHtml = `
-      <div class="atc-rwy-plate arr" title="İniş Pisti: ${cfg.arrRunwayData.name}">
+  complexes.forEach(c => {
+    const curRwy = c.currentRwyData;
+    if (!curRwy) return;
+
+    let pos = curRwy.threshold;
+    if (c.active && c.role === "arr" && curRwy.touchdown) {
+      pos = curRwy.touchdown;
+    } else if (!c.active && curRwy.threshold && curRwy.rolloutEnd) {
+      pos = [(curRwy.threshold[0] + curRwy.rolloutEnd[0]) * 0.5, (curRwy.threshold[1] + curRwy.rolloutEnd[1]) * 0.5];
+    }
+
+    const hdg = curRwy.heading || 0;
+    const isNorth = (hdg >= 300 || hdg <= 60);
+    const dirArrow = isNorth ? "▲" : "▼";
+    const dirText = isNorth ? "KUZEY" : "GÜNEY";
+
+    let roleBadge = "⚪ PASİF (KAPALI)";
+    let plateClass = "passive";
+
+    if (c.active) {
+      if (c.role === "dep") {
+        roleBadge = "🛫 KALKIŞ (DEP)";
+        plateClass = "dep";
+      } else if (c.role === "arr") {
+        roleBadge = "🛬 İNİŞ (ARR)";
+        plateClass = "arr";
+      } else {
+        roleBadge = "🔄 KARMA (DEP+ARR)";
+        plateClass = "both";
+      }
+    }
+
+    const html = `
+      <div class="atc-rwy-plate ${plateClass}" title="${c.name} - Ayarlamak için tıklayın">
         <div class="rwy-plate-top">
-          <span class="rwy-plate-badge">🛬 İNİŞ PİSTİ</span>
-          <span class="rwy-wind-chip">RÜZGAR UYUMLU</span>
+          <span class="rwy-plate-badge">${roleBadge}</span>
+          <span class="rwy-wind-chip">${c.active ? 'AKTİF' : 'DEVRE DIŞI'}</span>
         </div>
         <div class="rwy-plate-main">
-          <span class="rwy-plate-name">${cfg.arrRunwayData.name}</span>
-          <span class="rwy-plate-heading">▲ ${arrDirText} (${arrHdg}°)</span>
+          <span class="rwy-plate-name">${c.selectedDirection}</span>
+          <span class="rwy-plate-heading">${dirArrow} ${dirText} (${hdg}°)</span>
         </div>
       </div>
     `;
-    const arrIcon = L.divIcon({
-      html: arrHtml,
+
+    const icon = L.divIcon({
+      html: html,
       className: "atc-rwy-plate-container",
       iconSize: [210, 56],
       iconAnchor: [105, 28]
     });
-    const arrMarker = L.marker(cfg.arrRunwayData.touchdown, { icon: arrIcon, zIndexOffset: 2500 })
-      .bindTooltip(`<b>Aktif İniş Pisti: ${cfg.arrRunwayData.name}</b><br>İniş Yönü: ${arrDirText} (${arrHdg}°)<br><span style="color:#38bdf8;">👉 Değiştirmek İçin Tıklayın</span>`, { direction: "top" })
-      .on("click", () => openRunwayModal());
-    runwayOverlayLayerGroup.addLayer(arrMarker);
-  }
+
+    const marker = L.marker(pos, { icon: icon, zIndexOffset: 2500 })
+      .bindTooltip(`<b>${c.name}</b><br>Durum: ${c.active ? 'Aktif' : 'Pasif'}<br>Yön: ${c.selectedDirection} (${dirText})<br>Rol: ${c.role.toUpperCase()}<br><span style="color:#38bdf8;">👉 Değiştirmek / Yönetmek İçin Tıklayın</span>`, { direction: "top" })
+      .on("click", () => openRunwayModal(c.id));
+
+    runwayOverlayLayerGroup.addLayer(marker);
+  });
 }
 
 window.openRunwayModal = openRunwayModal;
