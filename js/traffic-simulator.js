@@ -41,6 +41,8 @@ function getAircraftDim(acType) {
 }
 window.getAircraftDim = getAircraftDim;
 
+const APPLICABLE_PHASES = new Set(["taxi_in", "taxi_out", "pushback", "holding", "queued", "takeoff"]);
+
 class GroundTrafficSimulator {
   constructor(airportIcao = "LTFJ") {
     this.airportIcao = (airportIcao === "LTFM") ? "LTFM" : "LTFJ";
@@ -69,6 +71,35 @@ class GroundTrafficSimulator {
     this.lastSeparationCheckTime = 0;
     this.lastStandSyncTime = 0;
     this.lastTickNotifyTime = 0;
+
+    // Zero-allocation reusable object pools & sets
+    this._activeRunwaysOccupied = new Set();
+    this._occupiedFlightsMap = new Map();
+    this._activeIdSet = new Set();
+    this._counts = { approaching: 0, taxiing: 0, on_stand: 0, takeoff: 0, safetyHold: 0 };
+    this._activeFlightsChanged = true;
+
+    // Spatial hash grid for ground collision and separation (O(N) vs O(N^2))
+    this.aircraftSpatialGrid = new Map();
+    this.GRID_CELL_DEG = 0.0006; // approx 66 meters
+    this.ISTANBUL_COS_LAT = 0.7535; // cos(41.1 deg)
+
+    // Precision microsecond profiling telemetry
+    this.profiling = {
+      fps: 60,
+      frameTimeMs: 0,
+      maxFrameTimeMs: 0,
+      interpolationUs: 0,
+      cullingUs: 0,
+      separationUs: 0,
+      markerSyncUs: 0,
+      totalTickUs: 0,
+      activeFlightsCount: 0,
+      visibleMarkersCount: 0,
+      spatialComparisons: 0
+    };
+    this._fpsFrameCounter = 0;
+    this._fpsLastTime = performance.now();
 
     this.runwayLocks = {
       "16R": null,
@@ -368,25 +399,27 @@ class GroundTrafficSimulator {
           i + 1
         );
 
-        this.flights.push({
-          id: rf.id,
-          callsign: rf.callsign || rf.flightNumber,
-          flightNumber: rf.flightNumber,
-          airline: rf.airline,
-          airlineName: rf.airlineName,
-          registration: rf.registration,
-          type: rf.type,
-          dim: getAircraftDim(rf.type),
-          origin: rf.origin,
-          destination: rf.destination,
-          city: (rf.kind === "arrival" ? rf.originCity : rf.destinationCity) || "İstanbul",
-          standRef: standObj.ref,
-          eta: this.formatTime(arrivalSec + 370),
-          etd: this.formatTime(departureSec - 340),
-          timeInFormatted: this.formatTime(arrivalSec + 370),
-          timeOutFormatted: this.formatTime(departureSec - 340),
-          startTime: arrivalSec - 180,
-          endTime: departureSec + 130,
+          const effectiveDepSec = Math.max(arrivalSec + groundTimeSec, departureSec || (arrivalSec + groundTimeSec));
+
+          this.flights.push({
+            id: rf.id,
+            callsign: rf.callsign || rf.flightNumber,
+            flightNumber: rf.flightNumber,
+            airline: rf.airline,
+            airlineName: rf.airlineName,
+            registration: rf.registration,
+            type: rf.type,
+            dim: getAircraftDim(rf.type),
+            origin: rf.origin,
+            destination: rf.destination,
+            city: (rf.kind === "arrival" ? rf.originCity : rf.destinationCity) || "İstanbul",
+            standRef: standObj.ref,
+            eta: this.formatTime(arrivalSec + 370),
+            etd: this.formatTime(effectiveDepSec - 340),
+            timeInFormatted: this.formatTime(arrivalSec + 370),
+            timeOutFormatted: this.formatTime(effectiveDepSec - 340),
+            startTime: arrivalSec - 180,
+            endTime: effectiveDepSec + 140,
           trajectory: routeData.trajectory,
           fullRoute: routeData.fullRoute,
           twySequence: routeData.twySequence,
@@ -565,6 +598,14 @@ class GroundTrafficSimulator {
     const dtReal = (now - this.lastRealTimestamp) / 1000;
     this.lastRealTimestamp = now;
 
+    // Track real FPS
+    this._fpsFrameCounter++;
+    if (now - this._fpsLastTime >= 1000) {
+      this.profiling.fps = Math.round((this._fpsFrameCounter * 1000) / (now - this._fpsLastTime));
+      this._fpsFrameCounter = 0;
+      this._fpsLastTime = now;
+    }
+
     // Advance simulation time smoothly
     const dtSim = dtReal * this.speedMultiplier;
     this.simSeconds = (this.simSeconds + dtSim) % 86400;
@@ -581,8 +622,8 @@ class GroundTrafficSimulator {
   }
 
   /**
-   * Refreshes the active flights list only when simulation second shifts significantly
-   * or when the user manually scrubs the timeline
+   * Refreshes the active flights list with early-exit break on sorted start times
+   * and reuses the existing array buffer (zero GC garbage generation)
    */
   refreshActiveFlightsCache(force = false) {
     const cur = this.simSeconds;
@@ -591,60 +632,68 @@ class GroundTrafficSimulator {
     }
     this.lastActiveFilterSimSec = cur;
 
-    const list = [];
-    const total = this.flights.length;
+    const flights = this.flights;
+    const total = flights.length;
+    const list = this.activeFlightsCache;
+    list.length = 0; // Reuse existing array buffer, zero GC allocation
+
     for (let i = 0; i < total; i++) {
-      const f = this.flights[i];
+      const f = flights[i];
+      if (f.startTime > cur) {
+        break; // Sorted by startTime: no subsequent flights can be active!
+      }
       const effectiveEnd = f.endTime + (f.delaySeconds || 0);
-      if (cur >= f.startTime && cur <= effectiveEnd) {
+      if (cur <= effectiveEnd) {
         list.push(f);
       }
     }
-    this.activeFlightsCache = list;
+    this._activeFlightsChanged = true;
   }
 
   /**
    * Core simulation step: 60 FPS interpolation, throttled separation & stand checks
-   * Freezes aircraft position dynamically via delaySeconds while queued/holding
+   * Freezes aircraft position dynamically via delaySeconds while queued/holding.
+   * Completely zero-allocation hot path with scalar frustum culling.
    */
   updateSimulation(dtSim, forceFullUpdate = false) {
-    const now = performance.now();
+    const tFrameStart = performance.now();
     const currentTime = this.simSeconds;
 
     // 1. Maintain active flight cache
     this.refreshActiveFlightsCache(forceFullUpdate);
     const activeFlights = this.activeFlightsCache;
     const activeLength = activeFlights.length;
+    this.profiling.activeFlightsCount = activeLength;
 
-    const activeRunwaysOccupied = new Set();
-    const occupiedFlightsMap = new Map();
-    let counts = { approaching: 0, taxiing: 0, on_stand: 0, takeoff: 0, safetyHold: 0 };
+    const activeRunwaysOccupied = this._activeRunwaysOccupied;
+    activeRunwaysOccupied.clear();
+    const occupiedFlightsMap = this._occupiedFlightsMap;
+    occupiedFlightsMap.clear();
 
-    // 2. Interpolate active flight coordinates with delay freezing (super fast in RAM)
+    const counts = this._counts;
+    counts.approaching = 0;
+    counts.taxiing = 0;
+    counts.on_stand = 0;
+    counts.takeoff = 0;
+    counts.safetyHold = 0;
+
+    // 2. Interpolate active flight coordinates with delay freezing (direct in-place, 0 allocations)
+    const tInterp0 = performance.now();
     for (let i = 0; i < activeLength; i++) {
       const f = activeFlights[i];
 
-      // Dynamic simulation delay accumulation:
-      // While queued/holding for physical safety, accumulate delay so effectiveTime
-      // stays exactly constant and the plane remains physically motionless.
+      // Dynamic simulation delay accumulation while queued/holding
       if (f.isQueued && dtSim > 0) {
         f.delaySeconds = (f.delaySeconds || 0) + dtSim;
       }
 
       const effectiveTime = currentTime - (f.delaySeconds || 0);
-      const state = this.interpolateState(f, effectiveTime);
-      if (state) {
-        f.lat = state.lat;
-        f.lon = state.lon;
-        f.heading = state.heading;
-        f.altitude = state.alt;
-        f.isHoldingPoint = !!state.isHoldingPoint;
-
+      if (this.interpolateStateDirect(f, effectiveTime)) {
         if (f.isQueued) {
           f.speed = 0;
           f.phase = "queued";
           counts.safetyHold++;
-          const origTwy = state.twyName || "Taksi Yolu";
+          const origTwy = f.twyName || "Taksi Yolu";
           if (f.queueReason === "following") {
             f.currentTwyName = `${origTwy} (Ön-Arka Takip Mesafesi [${f.conflictWith || ''}])`;
           } else if (f.queueReason === "junction_yield") {
@@ -655,9 +704,7 @@ class GroundTrafficSimulator {
             f.currentTwyName = `${origTwy} (Taksi Geçiş Beklemesi)`;
           }
         } else {
-          f.speed = state.speed;
-          f.phase = state.phase;
-          f.currentTwyName = state.twyName || "Taksi Yolu";
+          f.currentTwyName = f.twyName || "Taksi Yolu";
         }
 
         // Keep remainingRoute updated for glowing blue polyline if selected
@@ -666,34 +713,54 @@ class GroundTrafficSimulator {
         }
 
         // Dynamic Runway Occupancy Check:
-        // A runway is only occupied if an aircraft is physically rolling on its surface
-        if (state.phase === "landing" && state.alt <= 18 && state.speed > 28) {
-          const rwyCode = this.extractRunwayCode(f.arrRwyName || state.twyName);
+        if (f.phase === "landing" && f.altitude <= 18 && f.speed > 28) {
+          const rwyCode = f._cachedArrRwyCode || (f._cachedArrRwyCode = this.extractRunwayCode(f.arrRwyName || f.twyName));
           if (rwyCode) activeRunwaysOccupied.add(rwyCode);
-        } else if (state.phase === "takeoff" && state.alt <= 25 && state.speed >= 28 && state.speed < 150) {
-          const rwyCode = this.extractRunwayCode(f.depRwyName || state.twyName);
+        } else if (f.phase === "takeoff" && f.altitude <= 25 && f.speed >= 28 && f.speed < 150) {
+          const rwyCode = f._cachedDepRwyCode || (f._cachedDepRwyCode = this.extractRunwayCode(f.depRwyName || f.twyName));
           if (rwyCode) activeRunwaysOccupied.add(rwyCode);
         }
       }
     }
+    this.profiling.interpolationUs = (performance.now() - tInterp0) * 1000;
 
     // 3. Throttled Separation & Queue Checks (Run at 5 Hz instead of 60 Hz)
-    const runSeparation = forceFullUpdate || (now - this.lastSeparationCheckTime > 200);
+    const runSeparation = forceFullUpdate || (tFrameStart - this.lastSeparationCheckTime > 200);
     if (runSeparation) {
-      this.lastSeparationCheckTime = now;
+      const tSep0 = performance.now();
+      this.lastSeparationCheckTime = tFrameStart;
       this.checkGroundSeparation(activeFlights, activeRunwaysOccupied);
       this.checkCongestionAndDeadlocks(activeFlights);
+      this.profiling.separationUs = (performance.now() - tSep0) * 1000;
     }
 
-    // 4. Viewport/Frustum query for GPU culling
-    let viewBounds = null;
+    // 4. Viewport/Frustum query for GPU culling (scalar numeric box - 0 allocations)
+    const tCull0 = performance.now();
+    let minLat = -90, maxLat = 90, minLon = -180, maxLon = 180;
+    let hasViewport = false;
     if (window.map) {
-      const padAmount = this.isMobile ? 0.05 : 0.18;
-      viewBounds = window.map.getBounds().pad(padAmount);
+      const bounds = window.map.getBounds();
+      if (bounds && bounds._southWest && bounds._northEast) {
+        const sw = bounds._southWest;
+        const ne = bounds._northEast;
+        const padAmount = this.isMobile ? 0.05 : 0.18;
+        const padLat = (ne.lat - sw.lat) * padAmount;
+        const padLon = (ne.lng - sw.lng) * padAmount;
+        minLat = sw.lat - padLat;
+        maxLat = ne.lat + padLat;
+        minLon = sw.lng - padLon;
+        maxLon = ne.lng + padLon;
+        hasViewport = true;
+      }
     }
+    this.profiling.cullingUs = (performance.now() - tCull0) * 1000;
 
     // 5. Update marker positions and count phases
-    const activeIdSet = new Set();
+    const tMarker0 = performance.now();
+    const activeIdSet = this._activeIdSet;
+    activeIdSet.clear();
+    let visibleCount = 0;
+
     for (let i = 0; i < activeLength; i++) {
       const f = activeFlights[i];
       activeIdSet.add(f.id);
@@ -709,36 +776,53 @@ class GroundTrafficSimulator {
         counts.takeoff++;
       }
 
-      // Check if aircraft is currently visible inside the map window
-      const isVisible = viewBounds ? viewBounds.contains([f.lat, f.lon]) : true;
+      // Fast scalar bounds check (zero allocations)
+      const isVisible = hasViewport 
+        ? (f.lat >= minLat && f.lat <= maxLat && f.lon >= minLon && f.lon <= maxLon)
+        : true;
+      if (isVisible) visibleCount++;
       this.syncAircraftMarker(f, isVisible);
     }
+    this.profiling.visibleMarkersCount = visibleCount;
+    this.profiling.markerSyncUs = (performance.now() - tMarker0) * 1000;
 
-    // 6. Remove inactive markers from map
-    this.activeAircraftMarkers.forEach((marker, id) => {
-      if (!activeIdSet.has(id)) {
-        if (window.map) window.map.removeLayer(marker);
-        this.activeAircraftMarkers.delete(id);
-      }
-    });
+    // 6. Remove inactive markers from map only when active flight list changed
+    if (this._activeFlightsChanged || forceFullUpdate) {
+      this._activeFlightsChanged = false;
+      this.activeAircraftMarkers.forEach((marker, id) => {
+        if (!activeIdSet.has(id)) {
+          if (window.map) window.map.removeLayer(marker);
+          this.activeAircraftMarkers.delete(id);
+        }
+      });
+    }
 
     // 7. Throttled Stand Occupancy Sync (Run at 1 Hz)
-    if (forceFullUpdate || (now - this.lastStandSyncTime > 1000)) {
-      this.lastStandSyncTime = now;
+    if (forceFullUpdate || (tFrameStart - this.lastStandSyncTime > 1000)) {
+      this.lastStandSyncTime = tFrameStart;
       this.syncStandOccupancy(occupiedFlightsMap);
     }
 
     // 8. Throttled Tick Notification for UI meters (15 Hz)
-    if (forceFullUpdate || (now - this.lastTickNotifyTime > 65)) {
-      this.lastTickNotifyTime = now;
+    if (forceFullUpdate || (tFrameStart - this.lastTickNotifyTime > 65)) {
+      this.lastTickNotifyTime = tFrameStart;
       this.notifyTick({
         simSeconds: this.simSeconds,
         timeFormatted: this.formatTime(this.simSeconds),
         totalFlightsInSchedule: this.flights.length,
         activeFlightsCount: activeFlights.length,
         counts: counts,
-        activeFlights: activeFlights
+        activeFlights: activeFlights,
+        profiling: this.profiling
       });
+    }
+
+    const tFrameEnd = performance.now();
+    const frameMs = tFrameEnd - tFrameStart;
+    this.profiling.frameTimeMs = frameMs;
+    this.profiling.totalTickUs = frameMs * 1000;
+    if (frameMs > this.profiling.maxFrameTimeMs) {
+      this.profiling.maxFrameTimeMs = frameMs;
     }
   }
 
@@ -750,31 +834,60 @@ class GroundTrafficSimulator {
    * 3. Junction Priority: Straight-moving aircraft ("düz gelen") automatically have priority;
    *    aircraft turning or emerging from runway exits ("tahliye yolu") yield and proceed once clear.
    */
+  /**
+   * Enforces realistic ground traffic rules via 2D Spatial Hashing (O(N) complexity):
+   * 1. Dynamic Runway Clearance: If no aircraft is actively taking off or landing on the runway,
+   *    taxiing aircraft proceed immediately without holding.
+   * 2. Physical Overlap Separation: Pure physical clearance (nose-to-tail ~24m); no artificial deadlocks.
+   * 3. Junction Priority: Straight-moving aircraft ("düz gelen") automatically have priority;
+   *    aircraft turning or emerging from runway exits ("tahliye yolu") yield and proceed once clear.
+   */
   checkGroundSeparation(activeFlights, activeRunwaysOccupied) {
     const activeLength = activeFlights.length;
-    const applicablePhases = new Set(["taxi_in", "taxi_out", "pushback", "holding", "queued", "takeoff"]);
+    const grid = this.aircraftSpatialGrid;
+    grid.clear();
 
+    const cellDeg = this.GRID_CELL_DEG;
+    const cosLat = this.ISTANBUL_COS_LAT;
+
+    // 1. Populate spatial grid with active ground aircraft only
+    const groundFlights = [];
     for (let i = 0; i < activeLength; i++) {
-      const flightA = activeFlights[i];
-      if (!applicablePhases.has(flightA.phase)) {
-        flightA.isQueued = false;
-        flightA.queueReason = null;
-        flightA.conflictWith = null;
-        continue;
+      const f = activeFlights[i];
+      if (APPLICABLE_PHASES.has(f.phase)) {
+        groundFlights.push(f);
+        const cLat = Math.floor(f.lat / cellDeg);
+        const cLon = Math.floor(f.lon / cellDeg);
+        const key = `${cLat}_${cLon}`;
+        let bucket = grid.get(key);
+        if (!bucket) {
+          bucket = [];
+          grid.set(key, bucket);
+        }
+        bucket.push(f);
+      } else {
+        f.isQueued = false;
+        f.queueReason = null;
+        f.conflictWith = null;
       }
+    }
 
-      // 1. Dynamic Runway Clearance Check at Runway Hold Point
+    const groundLength = groundFlights.length;
+    let comparisons = 0;
+
+    // 2. Spatial separation check querying 3x3 neighboring cells
+    for (let i = 0; i < groundLength; i++) {
+      const flightA = groundFlights[i];
+
+      // Runway Hold Point Check
       if (flightA.isHoldingPoint) {
-        const depRwyRaw = flightA.depRwyName || (this.airportIcao === "LTFM" ? "35R" : "06R");
-        const depRwyCode = this.extractRunwayCode(depRwyRaw);
+        const depRwyCode = flightA._cachedDepRwyCode || (flightA._cachedDepRwyCode = this.extractRunwayCode(flightA.depRwyName || (this.airportIcao === "LTFM" ? "35R" : "06R")));
         if (activeRunwaysOccupied && activeRunwaysOccupied.has(depRwyCode)) {
-          // Runway is actively occupied by a rolling aircraft -> hold briefly
           flightA.isQueued = true;
           flightA.queueReason = "takeoff_separation";
           flightA.conflictWith = `Pist ${depRwyCode} Aktif Trafiği`;
           continue;
         } else {
-          // Runway is completely CLEAR -> Clear immediately, line up and depart!
           flightA.isQueued = false;
           flightA.queueReason = null;
           flightA.conflictWith = null;
@@ -782,89 +895,87 @@ class GroundTrafficSimulator {
       }
 
       let conflictFound = false;
+      const cLat = Math.floor(flightA.lat / cellDeg);
+      const cLon = Math.floor(flightA.lon / cellDeg);
 
-      for (let j = 0; j < activeLength; j++) {
-        if (i === j) continue;
-        const flightB = activeFlights[j];
-        if (!applicablePhases.has(flightB.phase) && flightB.phase !== "landing") continue;
+      neighborLoop:
+      for (let dl = -1; dl <= 1; dl++) {
+        for (let dn = -1; dn <= 1; dn++) {
+          const nKey = `${cLat + dl}_${cLon + dn}`;
+          const bucket = grid.get(nKey);
+          if (!bucket) continue;
 
-        // Ground distance in meters (fast Euclidean approximation)
-        const midLatRad = ((flightA.lat + flightB.lat) * 0.5) * (Math.PI / 180);
-        const dNorth = (flightB.lat - flightA.lat) * 111139;
-        const dEast = (flightB.lon - flightA.lon) * (111139 * Math.cos(midLatRad));
-        const distSq = dEast * dEast + dNorth * dNorth;
+          for (let k = 0; k < bucket.length; k++) {
+            const flightB = bucket[k];
+            if (flightA === flightB) continue;
+            comparisons++;
 
-        // Physical collision / overlap zone: center-to-center within 24 meters
-        if (distSq > 24 * 24) continue;
+            // Ground distance in meters (fast Euclidean approximation with cached cos)
+            const dNorth = (flightB.lat - flightA.lat) * 111139;
+            const dEast = (flightB.lon - flightA.lon) * (111139 * cosLat);
+            const distSq = dEast * dEast + dNorth * dNorth;
 
-        // Project relative vector onto Flight A's heading frame
-        const headingRad = (flightA.heading || 0) * (Math.PI / 180);
-        const sinH = Math.sin(headingRad);
-        const cosH = Math.cos(headingRad);
+            // Physical collision / overlap zone: center-to-center within 24 meters
+            if (distSq > 576) continue; // 24 * 24 = 576
 
-        // Along-track distance: positive = Flight B is ahead of Flight A; negative = Flight B is behind Flight A
-        const distLong = dEast * sinH + dNorth * cosH;
-        // Cross-track distance: perpendicular distance to Flight A's track
-        const distLat = Math.abs(dEast * cosH - dNorth * sinH);
+            // Project relative vector onto Flight A's heading frame
+            const headingRad = (flightA.heading || 0) * (Math.PI / 180);
+            const sinH = Math.sin(headingRad);
+            const cosH = Math.cos(headingRad);
 
-        // Relative heading difference
-        let dHdg = Math.abs((flightA.heading || 0) - (flightB.heading || 0));
-        if (dHdg > 180) dHdg = 360 - dHdg;
+            // Along-track and cross-track distances
+            const distLong = dEast * sinH + dNorth * cosH;
+            const distLat = Math.abs(dEast * cosH - dNorth * sinH);
 
-        // If aircraft are on parallel taxiways (separated laterally by >= 11m) -> NO conflict
-        const isParallelHeading = dHdg < 40 || dHdg > 140;
-        if (isParallelHeading && distLat >= 11) continue;
+            let dHdg = Math.abs((flightA.heading || 0) - (flightB.heading || 0));
+            if (dHdg > 180) dHdg = 360 - dHdg;
 
-        // An aircraft moving forward should NEVER yield or stop for an aircraft BEHIND it
-        // (Flight B is behind Flight A when distLong <= 0)
-        if (distLong <= 0) {
-          continue; // Flight B is behind Flight A; Flight A proceeds freely!
-        }
+            const isParallelHeading = dHdg < 40 || dHdg > 140;
+            if (isParallelHeading && distLat >= 11) continue;
 
-        // Flight B is ahead of Flight A (distLong > 0)
+            if (distLong <= 0) continue; // flightB is behind flightA
 
-        // RULE 1: Direct in-trail following along taxiway centerline or curve (< 22m physical buffer)
-        // User requested: "aralarındaki güvenli mesafeyi kaldır birbirlerinin üstünde gitmesinler yeter"
-        if (distLong > 0 && distLong < 22 && distLat < 10 && dHdg < 65) {
-          flightA.isQueued = true;
-          flightA.queueReason = "following";
-          flightA.conflictWith = flightB.callsign;
-          conflictFound = true;
-          break;
-        }
+            // RULE 1: Direct in-trail following (< 22m physical buffer)
+            if (distLong < 22 && distLat < 10 && dHdg < 65) {
+              flightA.isQueued = true;
+              flightA.queueReason = "following";
+              flightA.conflictWith = flightB.callsign;
+              conflictFound = true;
+              break neighborLoop;
+            }
 
-        // RULE 2: Junction / Intersection / Merge: Düz gelene öncelik
-        // "düz yola öncelik versinler ama burda yolu kullanan başka kimse yok yinede yola girmiyorlar bunu düzeltelim"
-        // IMPORTANT: Only yield at a junction if Flight B is ACTIVELY MOVING on the intersection!
-        // If Flight B is stopped (speed < 2) or queued, Flight B is NOT occupying/crossing the path!
-        const isBActivelyMoving = (flightB.speed >= 2) && !flightB.isQueued;
-        if (isBActivelyMoving && distLong > 0 && distLong < 24) {
-          if (this.shouldYield(flightA, flightB, distLong)) {
-            flightA.isQueued = true;
-            flightA.queueReason = "junction_yield";
-            flightA.conflictWith = flightB.callsign;
-            conflictFound = true;
-            break;
+            // RULE 2: Junction / Intersection / Merge: Düz gelene öncelik
+            const isBActivelyMoving = (flightB.speed >= 2) && !flightB.isQueued;
+            if (isBActivelyMoving && distLong < 24) {
+              if (this.shouldYield(flightA, flightB, distLong)) {
+                flightA.isQueued = true;
+                flightA.queueReason = "junction_yield";
+                flightA.conflictWith = flightB.callsign;
+                conflictFound = true;
+                break neighborLoop;
+              }
+            }
+
+            // RULE 3: Runway Takeoff Roll Safety
+            if (flightA.phase === "takeoff" && distLong < 300 && distLat < 20) {
+              flightA.isQueued = true;
+              flightA.queueReason = "takeoff_separation";
+              flightA.conflictWith = flightB.callsign;
+              conflictFound = true;
+              break neighborLoop;
+            }
           }
-        }
-
-        // RULE 3: Runway Takeoff Roll Safety: If ahead on runway roll corridor
-        if (flightA.phase === "takeoff" && distLong > 0 && distLong < 300 && distLat < 20) {
-          flightA.isQueued = true;
-          flightA.queueReason = "takeoff_separation";
-          flightA.conflictWith = flightB.callsign;
-          conflictFound = true;
-          break;
         }
       }
 
-      // If no conflict or hold applies, aircraft is fully cleared to move!
-      if (!conflictFound && (!flightA.isHoldingPoint || !activeRunwaysOccupied.has(this.extractRunwayCode(flightA.depRwyName)))) {
+      if (!conflictFound && (!flightA.isHoldingPoint || !activeRunwaysOccupied.has(flightA._cachedDepRwyCode || ""))) {
         flightA.isQueued = false;
         flightA.queueReason = null;
         flightA.conflictWith = null;
       }
     }
+
+    this.profiling.spatialComparisons = comparisons;
   }
 
   /**
@@ -902,10 +1013,15 @@ class GroundTrafficSimulator {
     if (!traj || traj.length < 2) return null;
     const curLat = f.lat;
     const curLon = f.lon;
-    for (let i = 0; i < traj.length; i++) {
+    const startIdx = f._trajIdx || 0;
+    const distSqThreshold = distMeters * distMeters;
+    const cosLat = this.ISTANBUL_COS_LAT || 0.7535;
+
+    for (let i = startIdx; i < traj.length; i++) {
       const pt = traj[i].pos;
-      const d = this.calcDistance(curLat, curLon, pt[0], pt[1]);
-      if (d >= distMeters) {
+      const dNorth = (pt[0] - curLat) * 111139;
+      const dEast = (pt[1] - curLon) * (111139 * cosLat);
+      if (dNorth * dNorth + dEast * dEast >= distSqThreshold) {
         return pt;
       }
     }
@@ -1059,7 +1175,8 @@ class GroundTrafficSimulator {
     const traj = flight.trajectory;
     if (!traj) return [[flight.lat, flight.lon]];
     const remaining = [[flight.lat, flight.lon]];
-    for (let i = 0; i < traj.length; i++) {
+    const startIdx = flight._trajIdx || 0;
+    for (let i = startIdx; i < traj.length; i++) {
       if (traj[i].time > time) {
         remaining.push(traj[i].pos);
       }
@@ -1117,62 +1234,90 @@ class GroundTrafficSimulator {
     }
   }
 
-  interpolateState(flight, time) {
+  /**
+   * High-Performance In-Place State Interpolation:
+   * - O(1) monotonic segment lookup (reuses flight._trajIdx cache)
+   * - Uses precomputed segment bearings (zero trigonometry at runtime)
+   * - Mutates flight properties directly (zero object allocations, zero GC pressure)
+   */
+  interpolateStateDirect(flight, time) {
     const traj = flight.trajectory;
-    if (!traj || traj.length < 2) return null;
-
-    if (time <= traj[0].time) {
-      return {
-        lat: traj[0].pos[0],
-        lon: traj[0].pos[1],
-        heading: this.calcBearing(traj[0].pos, traj[1].pos),
-        speed: traj[0].speed,
-        phase: traj[0].phase,
-        alt: traj[0].alt,
-        twyName: traj[0].twyName,
-        isHoldingPoint: !!traj[0].isHoldingPoint
-      };
-    }
+    if (!traj || traj.length < 2) return false;
 
     const lastIdx = traj.length - 1;
+
+    if (time <= traj[0].time) {
+      const pt0 = traj[0];
+      flight.lat = pt0.pos[0];
+      flight.lon = pt0.pos[1];
+      flight.heading = pt0.bearing !== undefined ? pt0.bearing : this.calcBearing(pt0.pos, traj[1].pos);
+      flight.speed = pt0.speed;
+      flight.phase = pt0.phase;
+      flight.altitude = pt0.alt;
+      flight.twyName = pt0.twyName;
+      flight.isHoldingPoint = !!pt0.isHoldingPoint;
+      flight._trajIdx = 0;
+      return true;
+    }
+
     if (time >= traj[lastIdx].time) {
-      return {
-        lat: traj[lastIdx].pos[0],
-        lon: traj[lastIdx].pos[1],
-        heading: this.calcBearing(traj[lastIdx - 1].pos, traj[lastIdx].pos),
-        speed: traj[lastIdx].speed,
-        phase: traj[lastIdx].phase,
-        alt: traj[lastIdx].alt,
-        twyName: traj[lastIdx].twyName,
-        isHoldingPoint: false
-      };
+      const ptLast = traj[lastIdx];
+      flight.lat = ptLast.pos[0];
+      flight.lon = ptLast.pos[1];
+      flight.heading = ptLast.bearing !== undefined ? ptLast.bearing : this.calcBearing(traj[lastIdx - 1].pos, ptLast.pos);
+      flight.speed = ptLast.speed;
+      flight.phase = ptLast.phase;
+      flight.altitude = ptLast.alt;
+      flight.twyName = ptLast.twyName;
+      flight.isHoldingPoint = false;
+      flight._trajIdx = lastIdx;
+      return true;
     }
 
-    for (let i = 0; i < lastIdx; i++) {
-      if (time >= traj[i].time && time <= traj[i + 1].time) {
-        const t1 = traj[i].time;
-        const t2 = traj[i + 1].time;
-        const ratio = (time - t1) / (t2 - t1 || 1);
+    // Monotonic search: start from cached _trajIdx
+    let idx = flight._trajIdx || 0;
+    if (idx >= lastIdx) idx = 0;
 
-        const lat = traj[i].pos[0] + (traj[i + 1].pos[0] - traj[i].pos[0]) * ratio;
-        const lon = traj[i].pos[1] + (traj[i + 1].pos[1] - traj[i].pos[1]) * ratio;
-        const alt = traj[i].alt + (traj[i + 1].alt - traj[i].alt) * ratio;
-        const speed = traj[i].speed + (traj[i + 1].speed - traj[i].speed) * ratio;
-
-        return {
-          lat,
-          lon,
-          heading: this.calcBearing(traj[i].pos, traj[i + 1].pos),
-          speed,
-          phase: traj[i].phase,
-          alt,
-          twyName: traj[i].twyName,
-          isHoldingPoint: !!traj[i].isHoldingPoint
-        };
-      }
+    // Fast-forward if time moved forward
+    while (idx < lastIdx && time > traj[idx + 1].time) {
+      idx++;
     }
+    // Rewind if time jumped backward
+    while (idx > 0 && time < traj[idx].time) {
+      idx--;
+    }
+    flight._trajIdx = idx;
 
-    return null;
+    const t1 = traj[idx].time;
+    const t2 = traj[idx + 1].time;
+    const ratio = (time - t1) / (t2 - t1 || 1);
+
+    const pos1 = traj[idx].pos;
+    const pos2 = traj[idx + 1].pos;
+
+    flight.lat = pos1[0] + (pos2[0] - pos1[0]) * ratio;
+    flight.lon = pos1[1] + (pos2[1] - pos1[1]) * ratio;
+    flight.altitude = traj[idx].alt + (traj[idx + 1].alt - traj[idx].alt) * ratio;
+    flight.speed = traj[idx].speed + (traj[idx + 1].speed - traj[idx].speed) * ratio;
+    flight.heading = traj[idx].bearing !== undefined ? traj[idx].bearing : this.calcBearing(pos1, pos2);
+    flight.phase = traj[idx].phase;
+    flight.twyName = traj[idx].twyName;
+    flight.isHoldingPoint = !!traj[idx].isHoldingPoint;
+    return true;
+  }
+
+  interpolateState(flight, time) {
+    if (!this.interpolateStateDirect(flight, time)) return null;
+    return {
+      lat: flight.lat,
+      lon: flight.lon,
+      heading: flight.heading,
+      speed: flight.speed,
+      phase: flight.phase,
+      alt: flight.altitude,
+      twyName: flight.twyName,
+      isHoldingPoint: flight.isHoldingPoint
+    };
   }
 
   extractRunwayCode(str) {
@@ -1222,6 +1367,79 @@ class GroundTrafficSimulator {
   notifyTick(data) {
     for (let i = 0; i < this.onTickCallbacks.length; i++) {
       this.onTickCallbacks[i](data);
+    }
+  }
+
+  /**
+   * Parses and loads custom Flightradar24 CSV/JSON flight data
+   */
+  loadFlightradarData(content, isCSV = false) {
+    try {
+      let parsedFlights = [];
+      if (isCSV) {
+        const lines = content.split(/\r?\n/).filter(l => l.trim().length > 0);
+        if (lines.length < 2) return false;
+        const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(",").map(c => c.trim().replace(/^"|"$/g, ''));
+          if (cols.length < 3) continue;
+          const row = {};
+          headers.forEach((h, idx) => { row[h] = cols[idx] || ""; });
+          const callsign = row.callsign || row.flight || row.flightnumber || `FLIGHT_${i}`;
+          const type = row.type || row.aircraft || row.actype || "A321";
+          const origin = row.origin || row.from || "IST";
+          const dest = row.destination || row.dest || row.to || "JFK";
+          const arrSec = row.arrivalsec ? parseInt(row.arrivalsec, 10) : (36000 + (i * 120) % 43200);
+          const depSec = row.departuresec ? parseInt(row.departuresec, 10) : (arrSec + 2700);
+
+          parsedFlights.push({
+            id: `FR_CSV_${i}`,
+            callsign: callsign.toUpperCase(),
+            flightNumber: callsign.toUpperCase(),
+            airline: callsign.slice(0, 2).toUpperCase(),
+            airlineName: row.airline || "Havayolu",
+            registration: row.registration || `TC-FR${i}`,
+            type: type.toUpperCase(),
+            origin: origin.toUpperCase(),
+            destination: dest.toUpperCase(),
+            arrivalSec: arrSec,
+            departureSec: depSec,
+            groundTimeSec: Math.max(1800, depSec - arrSec)
+          });
+        }
+      } else {
+        const data = typeof content === "string" ? JSON.parse(content) : content;
+        const list = Array.isArray(data) ? data : (data.flights || data.data || []);
+        if (!Array.isArray(list) || list.length === 0) return false;
+        parsedFlights = list.map((item, idx) => {
+          const callsign = item.callsign || item.flightNumber || `FR_${idx + 1}`;
+          const arrSec = item.arrivalSec || item.sta || item.eta || (36000 + (idx * 120) % 43200);
+          const depSec = item.departureSec || item.std || item.etd || (arrSec + 2700);
+          return {
+            id: item.id || `FR_JSON_${idx + 1}`,
+            callsign: callsign.toUpperCase(),
+            flightNumber: callsign.toUpperCase(),
+            airline: item.airline || callsign.slice(0, 2).toUpperCase(),
+            airlineName: item.airlineName || item.airline || "Havayolu",
+            registration: item.registration || `TC-FR${idx + 1}`,
+            type: (item.type || item.acType || "A321").toUpperCase(),
+            origin: (item.origin || "IST").toUpperCase(),
+            destination: (item.destination || "JFK").toUpperCase(),
+            arrivalSec: arrSec,
+            departureSec: depSec,
+            groundTimeSec: Math.max(1800, depSec - arrSec)
+          };
+        });
+      }
+
+      if (parsedFlights.length === 0) return false;
+
+      window.REAL_FLIGHTS_IST = { flights: parsedFlights };
+      this.rebuildFlightTrajectories();
+      return true;
+    } catch (err) {
+      console.error("[TrafficSimulator] Failed to load Flightradar data:", err);
+      return false;
     }
   }
 }

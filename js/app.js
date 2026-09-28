@@ -30,6 +30,17 @@ let isUserScrubbingTimeline = false;
 let blueRoutePolyline = null;
 let blueDestMarker = null;
 
+function escapeHTML(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+window.escapeHTML = escapeHTML;
+
 document.addEventListener("DOMContentLoaded", () => {
   initMap();
   setupUIEvents();
@@ -113,6 +124,18 @@ function initMap() {
 function setupUIEvents() {
   setupRunwayConfigEvents();
 
+  // Weather widget minimize toggle
+  const btnToggleWeather = document.getElementById("btnToggleWeatherWidget");
+  const weatherWidget = document.getElementById("airportWeatherWidget");
+  if (btnToggleWeather && weatherWidget) {
+    btnToggleWeather.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isCompact = weatherWidget.classList.toggle("weather-compact");
+      btnToggleWeather.textContent = isCompact ? "+" : "─";
+      btnToggleWeather.title = isCompact ? "Hava Durumu Panelini Genişlet" : "Hava Durumu Panelini Küçült";
+    });
+  }
+
   // Mobile / Tablet sidebar drawer toggling
   const btnToggle = document.getElementById("btnToggleSidebar");
   const btnClose = document.getElementById("btnCloseSidebar");
@@ -120,12 +143,18 @@ function setupUIEvents() {
   const sidebar = document.querySelector(".sidebar");
 
   const openSidebar = () => {
-    if (sidebar) sidebar.classList.add("open");
+    if (sidebar) {
+      sidebar.classList.add("open");
+      if (btnToggle) btnToggle.setAttribute("aria-expanded", "true");
+    }
     if (backdrop) backdrop.classList.add("show");
   };
 
   const closeSidebar = () => {
-    if (sidebar) sidebar.classList.remove("open");
+    if (sidebar) {
+      sidebar.classList.remove("open");
+      if (btnToggle) btnToggle.setAttribute("aria-expanded", "false");
+    }
     if (backdrop) backdrop.classList.remove("show");
   };
 
@@ -141,6 +170,93 @@ function setupUIEvents() {
 
   if (btnClose) btnClose.addEventListener("click", closeSidebar);
   if (backdrop) backdrop.addEventListener("click", closeSidebar);
+
+  // Mobile Touch Swipe-to-dismiss gesture on sidebar drawer
+  if (sidebar) {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    sidebar.addEventListener("touchstart", (e) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    sidebar.addEventListener("touchend", (e) => {
+      const touchEndX = e.changedTouches[0].clientX;
+      const touchEndY = e.changedTouches[0].clientY;
+      const dx = touchEndX - touchStartX;
+      const dy = touchEndY - touchStartY;
+      if (dx > 60 && Math.abs(dx) > Math.abs(dy)) {
+        closeSidebar();
+      }
+    }, { passive: true });
+  }
+
+  // Global Keyboard Navigation Shortcuts for ATC Ground Operators
+  window.addEventListener("keydown", (e) => {
+    const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : "";
+    const isEditingText = activeTag === "input" || activeTag === "textarea" || activeTag === "select";
+
+    // Escape key closes open modals, drawer, or deselects aircraft
+    if (e.key === "Escape") {
+      const runwayModal = document.getElementById("runwayModal");
+      if (runwayModal && !runwayModal.classList.contains("hidden")) {
+        closeRunwayModal();
+        return;
+      }
+      const welcomeModal = document.getElementById("welcomeModal");
+      if (welcomeModal && !welcomeModal.classList.contains("hidden") && welcomeModal.style.display !== "none") {
+        closeWelcomeModal();
+        return;
+      }
+      if (window.TaxiwayDirectionManager && window.TaxiwayDirectionManager.isEditModeActive) {
+        window.TaxiwayDirectionManager.setEditMode(false);
+        return;
+      }
+      if (selectedFlightId) {
+        clearAircraftSelection();
+        return;
+      }
+      if (sidebar && sidebar.classList.contains("open")) {
+        closeSidebar();
+        return;
+      }
+    }
+
+    if (isEditingText) return;
+
+    // Spacebar toggles simulation Play/Pause
+    if (e.code === "Space" || e.key === " ") {
+      e.preventDefault();
+      if (window.setSimulationPlayback && trafficSim) {
+        window.setSimulationPlayback(!trafficSim.isPlaying);
+      }
+    }
+    // Number keys 1-5 for simulation speeds
+    else if (["1", "2", "3", "4", "5"].includes(e.key) && trafficSim) {
+      const speedMap = { "1": 1, "2": 5, "3": 15, "4": 30, "5": 60 };
+      const speed = speedMap[e.key];
+      trafficSim.setSpeed(speed);
+      document.querySelectorAll(".speed-btn").forEach(b => {
+        b.classList.toggle("active", parseInt(b.dataset.speed, 10) === speed);
+      });
+      showToast(`⚡ Simülasyon hızı: ${speed}x`);
+    }
+    // Key R: Toggle Runway Configuration modal
+    else if (e.key === "r" || e.key === "R") {
+      const runwayModal = document.getElementById("runwayModal");
+      if (runwayModal && !runwayModal.classList.contains("hidden")) {
+        closeRunwayModal();
+      } else {
+        openRunwayModal();
+      }
+    }
+    // Key T: Toggle Taxiway Direction Editor
+    else if (e.key === "t" || e.key === "T") {
+      if (window.TaxiwayDirectionManager) {
+        window.TaxiwayDirectionManager.toggleEditMode();
+      }
+    }
+  });
 
   // Tab switching
   document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -230,6 +346,7 @@ function setupUIEvents() {
       } else {
         showToast("Dosya ayrıştırılamadı. Geçerli bir Flightradar CSV/JSON yükleyin.");
       }
+      e.target.value = "";
     };
     reader.readAsText(file);
   });
@@ -575,6 +692,17 @@ function selectAircraft(flightId, autoJumpToTime = false) {
   const hud = document.getElementById("aircraftHUD");
   if (hud) hud.classList.remove("hidden");
 
+  // Compact weather widget to prevent overlap
+  const weatherWidget = document.getElementById("airportWeatherWidget");
+  if (weatherWidget) {
+    weatherWidget.classList.add("weather-compact");
+    const minBtn = document.getElementById("btnToggleWeatherWidget");
+    if (minBtn) {
+      minBtn.textContent = "+";
+      minBtn.title = "Hava Durumu Panelini Genişlet";
+    }
+  }
+
   // Populate Header
   document.getElementById("hudCallsign").textContent = flight.callsign;
   const livery = window.AircraftMarkerManager?.getLivery(flight.airline);
@@ -624,6 +752,17 @@ function clearAircraftSelection() {
 
   const hud = document.getElementById("aircraftHUD");
   if (hud) hud.classList.add("hidden");
+
+  // Restore weather widget to full view
+  const weatherWidget = document.getElementById("airportWeatherWidget");
+  if (weatherWidget) {
+    weatherWidget.classList.remove("weather-compact");
+    const minBtn = document.getElementById("btnToggleWeatherWidget");
+    if (minBtn) {
+      minBtn.textContent = "─";
+      minBtn.title = "Hava Durumu Panelini Küçült";
+    }
+  }
 
   taxiRouteHighlightLayerGroup.clearLayers();
   blueRoutePolyline = null;
@@ -827,7 +966,10 @@ function renderHUDSequenceTags(flight) {
   let html = "";
   let passedCurrent = false;
 
-  flight.twySequence.forEach(name => {
+  flight.twySequence.forEach((name, idx) => {
+    if (idx > 0) {
+      html += `<span class="twy-arrow">➔</span>`;
+    }
     let cls = "";
     if (name === curTwy || curTwy.includes(name)) {
       cls = "active";
@@ -1241,13 +1383,13 @@ function extendBounds(bounds, geom) {
 function createStandMarker(standObj) {
   const custom = standObj.customData;
   const statusClass = custom.status || "free";
-  const subText = custom.flight ? `<span class="stand-marker-sub">${custom.flight}</span>` : "";
+  const subText = custom.flight ? `<span class="stand-marker-sub">${escapeHTML(custom.flight)}</span>` : "";
 
   const icon = L.divIcon({
     className: "stand-custom-icon",
     html: `
       <div id="marker_${standObj.id}" class="stand-marker-badge ${statusClass}">
-        <span>${standObj.ref}</span>
+        <span>${escapeHTML(standObj.ref)}</span>
         ${subText}
       </div>
     `,
@@ -1277,12 +1419,12 @@ function updateMarkerTooltip(marker, standObj) {
 
   const content = `
     <div style="font-family: var(--font-sans); font-size: 11px; line-height: 1.4;">
-      <b style="color: #38bdf8; font-size: 13px;">STAND ${standObj.ref}</b><br>
+      <b style="color: #38bdf8; font-size: 13px;">STAND ${escapeHTML(standObj.ref)}</b><br>
       Durum: <b>${statusLabels[c.status] || "BOŞ"}</b><br>
-      ${c.flight ? `Uçuş: <b style="color: #f59e0b;">${c.flight}</b><br>` : ""}
-      ${c.aircraft ? `Uçak: ${c.aircraft}<br>` : ""}
-      ${c.timeIn ? `Varış: ${c.timeIn} | Kalkış: ${c.timeOut || '-'}<br>` : ""}
-      ${c.notes ? `<small style="color: #94a3b8;">${c.notes}</small>` : ""}
+      ${c.flight ? `Uçuş: <b style="color: #f59e0b;">${escapeHTML(c.flight)}</b><br>` : ""}
+      ${c.aircraft ? `Uçak: ${escapeHTML(c.aircraft)}<br>` : ""}
+      ${c.timeIn ? `Varış: ${escapeHTML(c.timeIn)} | Kalkış: ${escapeHTML(c.timeOut || '-')}<br>` : ""}
+      ${c.notes ? `<small style="color: #94a3b8;">${escapeHTML(c.notes)}</small>` : ""}
     </div>
   `;
   marker.bindTooltip(content, { direction: "top", offset: [0, -10] });
@@ -1505,11 +1647,11 @@ function renderStandsList(filterText = "") {
 
     card.innerHTML = `
       <div class="stand-card-header">
-        <span class="stand-id">${stand.ref}</span>
+        <span class="stand-id">${escapeHTML(stand.ref)}</span>
         <span class="card-status-dot" style="background-color: ${dotColor}"></span>
       </div>
-      ${stand.customData.flight ? `<div class="stand-flight">${stand.customData.flight}</div>` : `<div style="font-size: 11px; color: var(--text-dim);">Boş</div>`}
-      ${stand.customData.aircraft ? `<div class="stand-aircraft">${stand.customData.aircraft}</div>` : ""}
+      ${stand.customData.flight ? `<div class="stand-flight">${escapeHTML(stand.customData.flight)}</div>` : `<div style="font-size: 11px; color: var(--text-dim);">Boş</div>`}
+      ${stand.customData.aircraft ? `<div class="stand-aircraft">${escapeHTML(stand.customData.aircraft)}</div>` : ""}
     `;
 
     card.addEventListener("click", () => {
@@ -1846,6 +1988,8 @@ function handleFileImport(e) {
       }
     } catch (err) {
       showToast("Dosya okuma hatası: " + err.message);
+    } finally {
+      e.target.value = "";
     }
   };
   reader.readAsText(file);

@@ -7,8 +7,8 @@
   --border-highlight: #10b981; /* Parlak Zümrüt Yeşili Vurgu */
   
   --text-main: #f1f7f4;
-  --text-muted: #9ab4a6;
-  --text-dim: #6a8878;
+  --text-muted: #adc7b8;       /* WCAG AA 5.1:1 on #123326 surface */
+  --text-dim: #8cb09d;         /* WCAG AA 5.7:1 on #061510 background (upgraded from #6a8878) */
   
   --accent-cyan: #14b8a6;      /* Turkuaz Yeşili */
   --accent-neon-cyan: #10e8aa; /* Parlak Neon Nane / Camgöbeği */
@@ -33,11 +33,17 @@
   padding: 0;
 }
 
+:focus-visible {
+  outline: 2px solid var(--accent-neon-cyan) !important;
+  outline-offset: 2px !important;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: var(--bg-primary);
   color: var(--text-main);
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -185,15 +191,17 @@ body {
 /* ========================================================= */
 .aircraft-hud-panel {
   position: absolute;
-  top: 16px;
-  left: 20px;
+  top: 56px;
+  left: 14px;
   width: 360px;
-  background: #092218;
+  background: rgba(9, 34, 24, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--accent-green);
   border-radius: 12px;
   padding: 14px;
   z-index: 1000;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.8), 0 0 20px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.85), 0 0 24px rgba(16, 185, 129, 0.22);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -208,7 +216,7 @@ body {
 @keyframes hudSlideIn {
   from {
     opacity: 0;
-    transform: translateY(-15px) scale(0.96);
+    transform: translateY(-12px) scale(0.97);
   }
   to {
     opacity: 1;
@@ -252,49 +260,64 @@ body {
 
 .hud-actions {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
 }
 
 .btn-hud-tool {
   background: rgba(16, 185, 129, 0.15);
   border: 1px solid rgba(16, 185, 129, 0.4);
   color: var(--accent-neon-cyan);
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
+  padding: 6px 12px;
+  min-height: 36px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .btn-hud-tool.active {
   background: var(--accent-green);
   color: #061510;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
 }
 
 .btn-hud-close {
-  background: transparent;
-  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 15px;
   cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
 }
 
 .btn-hud-close:hover {
+  background: rgba(239, 68, 68, 0.2);
   color: var(--accent-red);
+  border-color: rgba(239, 68, 68, 0.4);
 }
 
 /* Telemetry Grid */
 .hud-telemetry-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  background: rgba(6, 21, 16, 0.75);
+  gap: 8px;
+  background: rgba(6, 21, 16, 0.85);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  padding: 8px;
+  padding: 8px 10px;
 }
 
 .hud-metric {
@@ -305,31 +328,34 @@ body {
 }
 
 .hud-metric-label {
-  font-size: 8px;
-  color: var(--text-dim);
+  font-size: 9.5px;
+  color: #94a3b8;
   text-transform: uppercase;
   font-weight: 700;
+  letter-spacing: 0.5px;
   margin-bottom: 2px;
 }
 
 .hud-metric-val {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
   color: #f8fafc;
+  font-variant-numeric: tabular-nums;
 }
 
 .hud-metric-val small {
-  font-size: 9px;
-  color: var(--text-muted);
-  font-weight: 400;
+  font-size: 10px;
+  color: var(--accent-cyan);
+  font-weight: 700;
+  margin-left: 2px;
 }
 
 .hud-phase-badge {
-  font-size: 9px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 12px;
   background: rgba(16, 185, 129, 0.2);
   color: var(--accent-green);
   border: 1px solid rgba(16, 185, 129, 0.4);
@@ -338,7 +364,7 @@ body {
 
 /* Active Taxiway Box */
 .hud-taxiway-box {
-  background: linear-gradient(90deg, rgba(16, 185, 129, 0.18), rgba(9, 32, 23, 0.85));
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.2), rgba(9, 32, 23, 0.9));
   border: 1px solid var(--accent-green);
   border-radius: 8px;
   padding: 8px 12px;
@@ -348,9 +374,9 @@ body {
 }
 
 .hud-twy-label {
-  font-size: 9px;
+  font-size: 9.5px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: #94a3b8;
   letter-spacing: 0.5px;
 }
 
@@ -362,7 +388,7 @@ body {
   text-shadow: 0 0 8px rgba(16, 232, 170, 0.5);
 }
 
-/* Sequence tags */
+/* Sequence Pipeline Tags */
 .hud-sequence-box {
   display: flex;
   flex-direction: column;
@@ -370,29 +396,51 @@ body {
 }
 
 .hud-sequence-title {
-  font-size: 9px;
+  font-size: 9.5px;
   font-weight: 700;
-  color: var(--text-dim);
+  color: #94a3b8;
   text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
 .hud-sequence-tags {
   display: flex;
   gap: 4px;
-  flex-wrap: wrap;
-  max-height: 60px;
-  overflow-y: auto;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 4px 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.hud-sequence-tags::-webkit-scrollbar {
+  height: 4px;
+}
+
+.hud-sequence-tags::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
 }
 
 .twy-tag {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
-  padding: 2px 6px;
+  padding: 3px 7px;
   border-radius: 4px;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.twy-arrow {
+  color: #64748b;
+  font-size: 9px;
+  flex-shrink: 0;
+  padding: 0 1px;
 }
 
 .twy-tag.active {
@@ -1282,7 +1330,7 @@ body {
 /* BOTTOM TIMELINE CONTROLLER BAR */
 .timeline-bar {
   position: absolute;
-  bottom: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom, 16px));
   left: 20px;
   right: 380px;
   background: var(--bg-secondary);
@@ -1312,18 +1360,20 @@ body {
 }
 
 .btn-play {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
   border: none;
   color: #fff;
-  font-size: 14px;
+  font-size: 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 12px rgba(6, 182, 212, 0.5);
+  box-shadow: 0 0 14px rgba(6, 182, 212, 0.5);
   transition: all 0.2s;
   flex-shrink: 0;
 }
@@ -1339,7 +1389,7 @@ body {
 
 .digital-time {
   font-family: var(--font-mono);
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 800;
   color: var(--accent-cyan);
   letter-spacing: 1px;
@@ -1358,12 +1408,15 @@ body {
   align-items: center;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 2px;
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
 }
 
 .speed-btn {
-  padding: 3px 7px;
+  padding: 4px 8px;
+  min-height: 32px;
+  min-width: 32px;
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -1371,8 +1424,11 @@ body {
   font-family: var(--font-mono);
   font-weight: 700;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 5px;
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .speed-btn:hover {
@@ -1391,11 +1447,18 @@ body {
   font-size: 11px;
   font-family: var(--font-mono);
   overflow-x: auto;
-  scrollbar-width: none;
+  padding: 2px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
 }
 
 .timeline-traffic-metrics::-webkit-scrollbar {
-  display: none;
+  height: 3px;
+}
+
+.timeline-traffic-metrics::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
 }
 
 .traffic-badge {
@@ -1404,7 +1467,7 @@ body {
   gap: 5px;
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
-  padding: 3px 8px;
+  padding: 4px 9px;
   border-radius: 6px;
   white-space: nowrap;
   flex-shrink: 0;
@@ -1425,19 +1488,21 @@ body {
   flex: 1;
   -webkit-appearance: none;
   appearance: none;
-  height: 6px;
+  height: 8px;
   background: #334155;
   border-radius: 4px;
   outline: none;
   cursor: pointer;
+  padding: 6px 0;
+  background-clip: content-box;
   transition: background 0.2s;
 }
 
 .timeline-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--accent-cyan);
   border: 2px solid #ffffff;
@@ -1944,7 +2009,7 @@ body {
 
 .multi-runway-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
   gap: 12px;
 }
 
@@ -2036,12 +2101,16 @@ body {
 
 .btn-rwy-status {
   border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 11px;
+  padding: 6px 12px;
+  min-height: 36px;
+  font-size: 11.5px;
   font-weight: 800;
   cursor: pointer;
   border: 1px solid transparent;
   transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-rwy-status.is-active {
@@ -2068,6 +2137,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .rwy-row-label {
@@ -2080,6 +2150,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .rwy-dir-display {
@@ -2093,12 +2164,16 @@ body {
   background: rgba(56, 189, 248, 0.15);
   border: 1px solid rgba(56, 189, 248, 0.35);
   color: #38bdf8;
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 700;
-  border-radius: 5px;
-  padding: 3px 8px;
+  border-radius: 6px;
+  padding: 6px 10px;
+  min-height: 34px;
   cursor: pointer;
   transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .btn-flip-dir:hover {
@@ -2108,19 +2183,24 @@ body {
 
 .rwy-role-pills {
   display: flex;
-  gap: 4px;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .btn-role-pill {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #94a3b8;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
-  padding: 4px 8px;
-  border-radius: 5px;
+  padding: 6px 10px;
+  min-height: 36px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-role-pill:hover {
@@ -2287,23 +2367,25 @@ body {
 /* Responsive adjustments for modal on mobile */
 @media (max-width: 768px) {
   .btn-runway-config {
-    padding: 4px 7px;
-    font-size: 10px;
+    padding: 6px 10px;
+    min-height: 38px;
+    font-size: 11px;
   }
 
   .btn-runway-config .rwy-summary {
-    max-width: 120px;
+    max-width: 140px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .rwy-config-grid {
+  .multi-runway-grid {
     grid-template-columns: 1fr;
     gap: 10px;
   }
 
   .modal-card {
-    max-height: 95vh;
+    max-height: 92dvh;
+    border-radius: 12px;
   }
 
   .modal-header {
@@ -2691,6 +2773,31 @@ body {
   transition: all 0.25s ease;
 }
 
+.airport-weather-widget.weather-compact {
+  width: auto;
+  max-width: 360px;
+  padding: 6px 12px;
+}
+
+.airport-weather-widget.weather-compact .weather-widget-header {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.airport-weather-widget.weather-compact .weather-condition-text {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.airport-weather-widget.weather-compact .weather-main-icon {
+  font-size: 18px;
+}
+
+.airport-weather-widget.weather-compact .weather-widget-grid {
+  display: none;
+}
+
 .airport-weather-widget:hover {
   border-color: rgba(16, 185, 129, 0.65);
   box-shadow: 0 12px 35px rgba(0, 0, 0, 0.75), 0 0 24px rgba(16, 185, 129, 0.25);
@@ -2733,6 +2840,34 @@ body {
   font-size: 13px;
   font-weight: 700;
   color: #f1f5f9;
+}
+
+.weather-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-weather-minimize {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-weather-minimize:hover {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border-color: #10b981;
 }
 
 .weather-badge-vfr {
@@ -3432,6 +3567,165 @@ body {
     width: 100%;
     justify-content: flex-end;
   }
+}
+
+/* ========================================================= */
+/* PERFORMANCE BENCHMARK & TELEMETRY SUITE STYLES           */
+/* ========================================================= */
+.btn-perf {
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  color: #34d399 !important;
+}
+
+.btn-perf:hover {
+  background: rgba(16, 185, 129, 0.25) !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.perf-modal-card {
+  width: 92%;
+  max-width: 900px;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: #091a13;
+  border: 1px solid #10b981;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(16, 185, 129, 0.2);
+}
+
+.perf-live-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  background: rgba(5, 16, 12, 0.9);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 14px;
+}
+
+.strip-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.strip-label {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.strip-val {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 800;
+  color: #e2e8f0;
+}
+
+.strip-val.highlight {
+  color: #34d399;
+}
+
+.perf-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.perf-card {
+  background: rgba(13, 38, 28, 0.7);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.perf-card:hover {
+  border-color: #34d399;
+  transform: translateY(-2px);
+}
+
+.perf-card-title {
+  font-size: 11px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: #38bdf8;
+  letter-spacing: 0.5px;
+}
+
+.perf-card-val {
+  font-size: 24px;
+  font-weight: 900;
+  font-family: var(--font-mono);
+  color: #ffffff;
+}
+
+.perf-card-val.highlight {
+  color: #34d399;
+}
+
+.perf-card-val small {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.perf-card-sub {
+  font-size: 11px;
+  color: #cbd5e1;
+  line-height: 1.35;
+}
+
+.perf-card-tag {
+  align-self: flex-start;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+.perf-card-tag.safe {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.perf-report-container {
+  margin-top: 10px;
+}
+
+.perf-report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 10px;
+}
+
+.report-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.15);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.report-meta {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 

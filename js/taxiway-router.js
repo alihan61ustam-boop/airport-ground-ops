@@ -5,6 +5,57 @@
  * using Dijkstra pathfinding on actual taxiway centerlines (100% adherence to orange lines).
  */
 
+/**
+ * High-performance Binary Min-Heap Priority Queue for Dijkstra
+ */
+class MinHeap {
+  constructor() {
+    this.data = [];
+  }
+  push(item) {
+    this.data.push(item);
+    this._up(this.data.length - 1);
+  }
+  pop() {
+    if (this.data.length === 0) return null;
+    const top = this.data[0];
+    const bottom = this.data.pop();
+    if (this.data.length > 0) {
+      this.data[0] = bottom;
+      this._down(0);
+    }
+    return top;
+  }
+  get size() {
+    return this.data.length;
+  }
+  _up(i) {
+    const item = this.data[i];
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      const parent = this.data[p];
+      if (item.cost >= parent.cost) break;
+      this.data[i] = parent;
+      i = p;
+    }
+    this.data[i] = item;
+  }
+  _down(i) {
+    const item = this.data[i];
+    const len = this.data.length;
+    const half = len >> 1;
+    while (i < half) {
+      const left = (i << 1) + 1;
+      const right = left + 1;
+      const best = (right < len && this.data[right].cost < this.data[left].cost) ? right : left;
+      if (this.data[best].cost >= item.cost) break;
+      this.data[i] = this.data[best];
+      i = best;
+    }
+    this.data[i] = item;
+  }
+}
+
 class TaxiwayGraphRouter {
   constructor() {
     this.airportIcao = null;
@@ -19,6 +70,16 @@ class TaxiwayGraphRouter {
     // Spatial hash grid for fast node snapping (~18m tolerance)
     this.CELL_SIZE = 0.00018; // approx 18-20m
     this.grid = new Map();
+
+    // Performance telemetry
+    this.telemetry = {
+      cacheHits: 0,
+      cacheMisses: 0,
+      dijkstraRuns: 0,
+      dijkstraTimeMs: 0,
+      snapQueries: 0,
+      snapTimeMs: 0
+    };
   }
 
   clear() {
@@ -28,6 +89,14 @@ class TaxiwayGraphRouter {
     this.routeCache.clear();
     this.grid.clear();
     this.isGraphReady = false;
+    this.telemetry = {
+      cacheHits: 0,
+      cacheMisses: 0,
+      dijkstraRuns: 0,
+      dijkstraTimeMs: 0,
+      snapQueries: 0,
+      snapTimeMs: 0
+    };
   }
 
   /**
@@ -106,20 +175,76 @@ class TaxiwayGraphRouter {
   }
 
   findNearestNode(lat, lon) {
-    let bestId = 0;
-    let bestDist = Infinity;
-    for (let i = 0; i < this.nodes.length; i++) {
-      const d = this.calcDistance(this.nodes[i][0], this.nodes[i][1], lat, lon);
-      if (d < bestDist) {
-        bestDist = d;
-        bestId = i;
+    this.telemetry.snapQueries++;
+    const t0 = performance.now();
+
+    // 1. Spatial hash grid accelerated query
+    const [cLat, cLon] = this.getCellKey(lat, lon);
+    let bestId = -1;
+    let bestDistSq = Infinity;
+    const cosLat = 0.7535; // cos(41.1 deg) for Istanbul airports
+
+    // Expanding rings: search 0, 1, 2... up to 8 rings (~140m)
+    for (let r = 0; r <= 8; r++) {
+      let foundInRadius = false;
+      const rMinLat = cLat - r;
+      const rMaxLat = cLat + r;
+      const rMinLon = cLon - r;
+      const rMaxLon = cLon + r;
+
+      for (let cl = rMinLat; cl <= rMaxLat; cl++) {
+        for (let cn = rMinLon; cn <= rMaxLon; cn++) {
+          if (r > 0 && cl > rMinLat && cl < rMaxLat && cn > rMinLon && cn < rMaxLon) {
+            continue; // Only check perimeter cells
+          }
+          const hashKey = `${cl}_${cn}`;
+          const list = this.grid.get(hashKey);
+          if (list) {
+            for (let i = 0; i < list.length; i++) {
+              const nodeIdx = list[i];
+              const node = this.nodes[nodeIdx];
+              const dNorth = (node[0] - lat) * 111139;
+              const dEast = (node[1] - lon) * (111139 * cosLat);
+              const distSq = dNorth * dNorth + dEast * dEast;
+              if (distSq < bestDistSq) {
+                bestDistSq = distSq;
+                bestId = nodeIdx;
+              }
+              foundInRadius = true;
+            }
+          }
+        }
+      }
+
+      const radiusMeters = (r + 1) * 22;
+      if (foundInRadius && bestDistSq <= radiusMeters * radiusMeters) {
+        this.telemetry.snapTimeMs += (performance.now() - t0);
+        return { id: bestId, dist: Math.sqrt(bestDistSq) };
       }
     }
-    return { id: bestId, dist: bestDist };
+
+    if (bestId !== -1) {
+      this.telemetry.snapTimeMs += (performance.now() - t0);
+      return { id: bestId, dist: Math.sqrt(bestDistSq) };
+    }
+
+    // Fallback: Linear scan if far off airport grounds
+    let fallbackId = 0;
+    let fallbackDist = Infinity;
+    for (let i = 0; i < this.nodes.length; i++) {
+      const d = this.calcDistance(this.nodes[i][0], this.nodes[i][1], lat, lon);
+      if (d < fallbackDist) {
+        fallbackDist = d;
+        fallbackId = i;
+      }
+    }
+    this.telemetry.snapTimeMs += (performance.now() - t0);
+    return { id: fallbackId, dist: fallbackDist };
   }
 
   /**
    * Dijkstra pathfinding with dynamic traffic congestion penalties
+   * Powered by MinHeap priority queue (O(E log V))
    */
   findRoute(startCoord, endCoord, alternativeBias = 0) {
     if (!this.isGraphReady) return null;
@@ -133,21 +258,24 @@ class TaxiwayGraphRouter {
 
     const cacheKey = `${startNode}->${endNode}`;
     if (this.routeCache && this.routeCache.has(cacheKey)) {
+      this.telemetry.cacheHits++;
       return this.routeCache.get(cacheKey);
     }
+    this.telemetry.cacheMisses++;
+    this.telemetry.dijkstraRuns++;
+    const tStart = performance.now();
 
     const distMap = new Map();
     const prevMap = new Map();
     const visited = new Set();
 
-    // Priority Queue using binary heap / sorted array
-    const pq = [{ node: startNode, cost: 0 }];
+    // Priority Queue using O(log N) Binary MinHeap
+    const pq = new MinHeap();
+    pq.push({ node: startNode, cost: 0 });
     distMap.set(startNode, 0);
 
-    while (pq.length > 0) {
-      // Pop lowest cost
-      pq.sort((a, b) => a.cost - b.cost);
-      const { node: u, cost: currentCost } = pq.shift();
+    while (pq.size > 0) {
+      const { node: u, cost: currentCost } = pq.pop();
 
       if (u === endNode) break;
       if (visited.has(u)) continue;
@@ -157,7 +285,8 @@ class TaxiwayGraphRouter {
       const prevStep = prevMap.get(u);
       const prevNode = prevStep ? prevStep.u : null;
 
-      for (const edge of neighbors) {
+      for (let i = 0; i < neighbors.length; i++) {
+        const edge = neighbors[i];
         const v = edge.target;
         if (visited.has(v)) continue;
 
@@ -212,6 +341,8 @@ class TaxiwayGraphRouter {
         }
       }
     }
+
+    this.telemetry.dijkstraTimeMs += (performance.now() - tStart);
 
     if (!prevMap.has(endNode)) {
       console.warn(`[TaxiwayRouter] No connected route found between nodes ${startNode} and ${endNode}`);
@@ -568,6 +699,15 @@ class TaxiwayGraphRouter {
       depRwy: depRwyName
     });
 
+    // Precompute bearing for every trajectory segment so animation loop runs at 0 µs trig cost
+    const tLen = trajectory.length;
+    for (let i = 0; i < tLen - 1; i++) {
+      trajectory[i].bearing = this.calcBearing(trajectory[i].pos, trajectory[i + 1].pos);
+    }
+    if (tLen > 0) {
+      trajectory[tLen - 1].bearing = tLen > 1 ? trajectory[tLen - 2].bearing : 0;
+    }
+
     const fullRoute = trajectory.map(t => t.pos);
     const twySequence = [
       `Çıkış: ${exitChoice.name}`,
@@ -585,6 +725,20 @@ class TaxiwayGraphRouter {
       arrRwyName,
       depRwyName
     };
+  }
+
+  calcBearing(start, end) {
+    const startLat = start[0] * Math.PI / 180;
+    const startLon = start[1] * Math.PI / 180;
+    const endLat = end[0] * Math.PI / 180;
+    const endLon = end[1] * Math.PI / 180;
+
+    const dLon = endLon - startLon;
+    const y = Math.sin(dLon) * Math.cos(endLat);
+    const x = Math.cos(startLat) * Math.sin(endLat) -
+              Math.sin(startLat) * Math.cos(endLat) * Math.cos(dLon);
+    const brng = Math.atan2(y, x) * 180 / Math.PI;
+    return (brng + 360) % 360;
   }
 
   calcDistance(lat1, lon1, lat2, lon2) {

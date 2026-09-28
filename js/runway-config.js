@@ -443,8 +443,9 @@ class RunwayConfigManager {
           const endLineup = rwy.liftoff || rwy.rolloutEnd || rwy.threshold;
 
           const entries = [];
+          const maxIntersectionFraction = 0.35; // Maximum 35% down runway for intersection departures
           for (let i = 0; i < 20; i++) {
-            const t = i / 19;
+            const t = (i / 19) * maxIntersectionFraction;
             const hLat = +(baseHold[0] + t * (endHold[0] - baseHold[0])).toFixed(6);
             const hLon = +(baseHold[1] + t * (endHold[1] - baseHold[1])).toFixed(6);
             const lLat = +(baseLineup[0] + t * (endLineup[0] - baseLineup[0])).toFixed(6);
@@ -454,7 +455,7 @@ class RunwayConfigManager {
             entries.push({
               id: `${cleanPfx}${num}`,
               name: `${cleanPfx}${num}`,
-              desc: i === 0 ? "Pist Başı (Full Length)" : (i === 19 ? "Pist Sonu Girişi" : `Kesişim Hold Pozisyonu ${num}`),
+              desc: i === 0 ? "Pist Başı (Full Length)" : `Kesişim Giriş Pozisyonu ${num} (%${Math.round(t * 100)} TORA)`,
               holdPos: [hLat, hLon],
               lineupPos: [lLat, lLon]
             });

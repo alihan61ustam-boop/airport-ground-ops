@@ -588,42 +588,52 @@ class AircraftMarkerManager {
   }
 
   /**
-   * Fast position & telemetry update with DOM node caching and dirty checking
+   * Fast position & telemetry update with DOM node caching, dirty checking,
+   * and GPU-accelerated visibility toggling
    */
   static updateMarkerPosition(marker, flight, isVisible = true) {
-    if (!isVisible) {
-      if (marker._wrapper && marker._wrapper.style.display !== "none") {
-        marker._wrapper.style.display = "none";
-      }
-      return;
-    }
-
-    if (marker._wrapper && marker._wrapper.style.display === "none") {
-      marker._wrapper.style.display = "flex";
-    }
-
-    // Leaflet LatLng update - only when aircraft actually moves
-    const dLat = Math.abs(flight.lat - (marker._lastLat || 0));
-    const dLon = Math.abs(flight.lon - (marker._lastLon || 0));
-    if (dLat > 0.000004 || dLon > 0.000004) {
-      marker.setLatLng([flight.lat, flight.lon]);
-      marker._lastLat = flight.lat;
-      marker._lastLon = flight.lon;
-    }
-
-    // Cache DOM references once to avoid continuous DOM queries
     if (!marker._domCached) {
-      const el = document.getElementById(`ac_${flight.id}`);
+      const el = marker.getElement ? marker.getElement() : (marker._icon || document.getElementById(`ac_${flight.id}`));
       if (el) {
-        marker._wrapper = el;
+        marker._wrapper = el.querySelector(".aircraft-wrapper") || el;
         marker._svg = el.querySelector(".aircraft-svg");
         marker._label = el.querySelector(".aircraft-radar-label");
         marker._speedVal = el.querySelector(".flight-speed-val");
         marker._domCached = true;
-      } else {
-        return;
       }
     }
+
+    if (!isVisible) {
+      if (marker._wrapper && marker._wrapper.style.display !== "none") {
+        marker._wrapper.style.display = "none";
+      } else if (marker._icon && marker._icon.style.display !== "none") {
+        marker._icon.style.display = "none";
+      }
+      marker._wasOffscreen = true;
+      return;
+    }
+
+    // Entering viewport from off-screen
+    if (marker._wasOffscreen) {
+      marker._wasOffscreen = false;
+      if (marker._wrapper) marker._wrapper.style.display = "flex";
+      if (marker._icon) marker._icon.style.display = "";
+      // Force position catchup on entering screen
+      marker.setLatLng([flight.lat, flight.lon]);
+      marker._lastLat = flight.lat;
+      marker._lastLon = flight.lon;
+    } else {
+      // Leaflet LatLng update - only when aircraft actually moves
+      const dLat = Math.abs(flight.lat - (marker._lastLat || 0));
+      const dLon = Math.abs(flight.lon - (marker._lastLon || 0));
+      if (dLat > 0.000004 || dLon > 0.000004) {
+        marker.setLatLng([flight.lat, flight.lon]);
+        marker._lastLat = flight.lat;
+        marker._lastLon = flight.lon;
+      }
+    }
+
+    if (!marker._domCached) return;
 
     const heading = Math.round(flight.heading || 0);
     const speed = Math.round(flight.speed || 0);
