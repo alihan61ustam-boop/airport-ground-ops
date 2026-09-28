@@ -442,6 +442,108 @@ const AIRLINE_LIVERIES = {
         <text x="12" y="15" font-size="8" font-weight="900" text-anchor="middle" fill="#ffffff">DP</text>
       </svg>
     `
+  },
+  SIA: {
+    name: "Singapore Airlines",
+    code: "SQ",
+    displayTag: "SINGAPORE",
+    tailColor: "#00205b",
+    wingColor: "#d4af37",
+    bodyColor: "#ffffff",
+    badgeBg: "#001844",
+    badgeBorder: "#d4af37",
+    textColor: "#fef08a",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#00205b" stroke="#d4af37" stroke-width="1.3"/>
+        <path d="M 6,15 C 8,11 12,8 18,7 C 15,10 13,13 14,16 C 11,15 8,15 6,15 Z" fill="#d4af37"/>
+      </svg>
+    `
+  },
+  AHY: {
+    name: "Azerbaijan Airlines",
+    code: "J2",
+    displayTag: "AZAL",
+    tailColor: "#0055a5",
+    wingColor: "#00a651",
+    bodyColor: "#ffffff",
+    badgeBg: "#003366",
+    badgeBorder: "#00a651",
+    textColor: "#a7f3d0",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#0055a5" stroke="#00a651" stroke-width="1.3"/>
+        <path d="M 6,14 Q 12,7 18,12 Q 12,11 6,14 Z" fill="#ffffff"/>
+      </svg>
+    `
+  },
+  DAH: {
+    name: "Air Algerie",
+    code: "AH",
+    displayTag: "AIR ALGERIE",
+    tailColor: "#d3122a",
+    wingColor: "#006233",
+    bodyColor: "#ffffff",
+    badgeBg: "#8b0000",
+    badgeBorder: "#006233",
+    textColor: "#ffffff",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#d3122a" stroke="#ffffff" stroke-width="1.3"/>
+        <path d="M 7,15 L 14,8 L 17,11 L 11,16 Z" fill="#ffffff"/>
+      </svg>
+    `
+  },
+  JZR: {
+    name: "Jazeera Airways",
+    code: "J9",
+    displayTag: "JAZEERA",
+    tailColor: "#005a9c",
+    wingColor: "#0099d8",
+    bodyColor: "#ffffff",
+    badgeBg: "#003b66",
+    badgeBorder: "#0099d8",
+    textColor: "#38bdf8",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#005a9c" stroke="#0099d8" stroke-width="1.3"/>
+        <text x="12" y="15" font-size="8" font-weight="900" text-anchor="middle" fill="#ffffff">J9</text>
+      </svg>
+    `
+  },
+  KNE: {
+    name: "Flynas",
+    code: "XY",
+    displayTag: "FLYNAS",
+    tailColor: "#7e22ce",
+    wingColor: "#10b981",
+    bodyColor: "#ffffff",
+    badgeBg: "#4c1d95",
+    badgeBorder: "#10b981",
+    textColor: "#a7f3d0",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#7e22ce" stroke="#10b981" stroke-width="1.3"/>
+        <text x="12" y="15" font-size="8" font-weight="900" text-anchor="middle" fill="#ffffff">nas</text>
+      </svg>
+    `
+  },
+  OMS: {
+    name: "SalamAir",
+    code: "OV",
+    displayTag: "SALAMAIR",
+    tailColor: "#059669",
+    wingColor: "#06b6d4",
+    bodyColor: "#ffffff",
+    badgeBg: "#064e3b",
+    badgeBorder: "#06b6d4",
+    textColor: "#67e8f9",
+    logoSvg: `
+      <svg class="airline-emblem-svg" viewBox="0 0 24 24" width="13" height="13">
+        <circle cx="12" cy="12" r="10.5" fill="#059669" stroke="#06b6d4" stroke-width="1.3"/>
+        <text x="12" y="15" font-size="8" font-weight="900" text-anchor="middle" fill="#ffffff">OV</text>
+      </svg>
+    `
   }
 };
 
@@ -529,6 +631,7 @@ class AircraftMarkerManager {
   static createMarker(flight) {
     const livery = this.getLivery(flight.airline, flight);
     const isSelected = (window.selectedFlightId === flight.id);
+    const isLiveADSB = !!flight.isLiveADSB;
     const heading = flight.heading || 0;
     const svgHtml = this.createAircraftSVG(livery, heading, isSelected);
 
@@ -538,6 +641,11 @@ class AircraftMarkerManager {
         ${livery.logoSvg}
         <span class="airline-brand-tag">${livery.displayTag}</span>
       </div>
+    `;
+
+    // Live ADS-B badge
+    const adsbBadgeHtml = `
+      <div class="adsb-live-marker-chip" style="${isLiveADSB ? '' : 'display: none;'}">🟢 CANLI ADS-B</div>
     `;
 
     // High-contrast flight code and telemetry label below
@@ -551,7 +659,8 @@ class AircraftMarkerManager {
     const icon = L.divIcon({
       className: "aircraft-marker-container",
       html: `
-        <div class="aircraft-wrapper ${isSelected ? 'active-selection' : ''}" id="ac_${flight.id}">
+        <div class="aircraft-wrapper ${isSelected ? 'active-selection' : ''} ${isLiveADSB ? 'adsb-live-marker' : ''}" id="ac_${flight.id}">
+          ${adsbBadgeHtml}
           ${logoBadgeHtml}
           ${svgHtml}
           ${labelHtml}
@@ -563,7 +672,7 @@ class AircraftMarkerManager {
 
     const marker = L.marker([flight.lat, flight.lon], {
       icon: icon,
-      zIndexOffset: isSelected ? 4000 : 2000
+      zIndexOffset: isSelected ? 4000 : (isLiveADSB ? 3000 : 2000)
     });
 
     marker._flightId = flight.id;
@@ -571,11 +680,13 @@ class AircraftMarkerManager {
     marker._lastSpeed = Math.round(flight.speed || 0);
     marker._lastLat = flight.lat;
     marker._lastLon = flight.lon;
+    marker._wasLiveADSB = isLiveADSB;
     marker._domCached = false;
     marker._wrapper = null;
     marker._svg = null;
     marker._label = null;
     marker._speedVal = null;
+    marker._adsbChip = null;
 
     marker.on("click", (e) => {
       L.DomEvent.stopPropagation(e);
@@ -670,7 +781,25 @@ class AircraftMarkerManager {
       if (marker._wrapper) {
         marker._wrapper.classList.toggle("active-selection", isSelected);
       }
-      marker.setZIndexOffset(isSelected ? 4000 : 2000);
+      marker.setZIndexOffset(isSelected ? 4000 : (flight.isLiveADSB ? 3000 : 2000));
+    }
+
+    // Toggle ADS-B live badge on marker dynamically
+    const isLiveADSB = !!flight.isLiveADSB;
+    if (marker._wasLiveADSB !== isLiveADSB) {
+      marker._wasLiveADSB = isLiveADSB;
+      if (marker._wrapper) {
+        marker._wrapper.classList.toggle("adsb-live-marker", isLiveADSB);
+        if (!marker._adsbChip) {
+          marker._adsbChip = marker._wrapper.querySelector(".adsb-live-marker-chip");
+        }
+        if (marker._adsbChip) {
+          marker._adsbChip.style.display = isLiveADSB ? "" : "none";
+        }
+      }
+      if (!isSelected) {
+        marker.setZIndexOffset(isLiveADSB ? 3000 : 2000);
+      }
     }
   }
 }

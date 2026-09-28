@@ -1,30 +1,40 @@
 :root {
-  --bg-primary: #061510;       /* Koyu Yeşil / Orman Yeşili Siyah */
-  --bg-secondary: #0c241b;     /* Zengin Çam / Koyu Yeşil */
-  --bg-surface: #123326;       /* Zümrüt Koyu Yeşil Kart/Panel Yüzeyi */
-  --bg-hover: #1b4534;         /* Canlı Koyu Yeşil Hover */
-  --border-color: #1e4d3a;     /* Koyu Yeşil Kenarlık */
-  --border-highlight: #10b981; /* Parlak Zümrüt Yeşili Vurgu */
-  
-  --text-main: #f1f7f4;
-  --text-muted: #adc7b8;       /* WCAG AA 5.1:1 on #123326 surface */
-  --text-dim: #8cb09d;         /* WCAG AA 5.7:1 on #061510 background (upgraded from #6a8878) */
-  
-  --accent-cyan: #14b8a6;      /* Turkuaz Yeşili */
-  --accent-neon-cyan: #10e8aa; /* Parlak Neon Nane / Camgöbeği */
-  --accent-blue: #059669;      /* Zümrüt Yeşili */
-  --accent-green: #10b981;
-  --accent-amber: #f59e0b;
-  --accent-red: #ef4444;
-  --accent-purple: #8b5cf6;
+  /* ==========================================================================
+     ULTRA-MODERN AEROSPACE & ATC PALETTE (Obsidian Slate / Sapphire / Cyan)
+     ========================================================================== */
+  --bg-base: #050811;          /* Deepest obsidian radar black */
+  --bg-primary: #070b14;       /* Primary console background */
+  --bg-secondary: #0b1120;     /* Deep navy slate header / panels */
+  --bg-surface: #0f172a;       /* Slate cards / widget surface */
+  --bg-surface-elevated: #1e293b; /* Popovers / flyouts / active surfaces */
+  --bg-hover: #1e293b;         /* Modern hover tone */
+  --bg-glass: rgba(11, 17, 32, 0.88); /* Translucent glass panels */
+
+  --border-color: rgba(255, 255, 255, 0.08); /* Clean translucent border */
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-highlight: rgba(56, 189, 248, 0.35); /* Electric cyan highlight */
+
+  --text-main: #f8fafc;        /* High-contrast crisp white */
+  --text-secondary: #cbd5e1;   /* Slate light text */
+  --text-muted: #94a3b8;       /* Meta / secondary text */
+  --text-dim: #64748b;         /* Tertiary / low-priority text */
+
+  --accent-cyan: #38bdf8;      /* Electric sky cyan */
+  --accent-neon-cyan: #00f0ff; /* Phosphor HUD cyan */
+  --accent-blue: #3b82f6;      /* Aviation sapphire */
+  --accent-sapphire: #2563eb;  /* Deep control blue */
+  --accent-green: #10b981;     /* Status emerald */
+  --accent-amber: #f59e0b;     /* Caution amber */
+  --accent-red: #ef4444;       /* Alert red */
+  --accent-purple: #a855f7;    /* Radar violet */
 
   --stand-free: #10b981;
-  --stand-occupied: #f97316;
+  --stand-occupied: #f59e0b;
   --stand-maintenance: #ef4444;
-  --stand-boarding: #0ea5e9;
+  --stand-boarding: #38bdf8;
 
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 * {
@@ -34,7 +44,7 @@
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent-neon-cyan) !important;
+  outline: 2px solid var(--accent-cyan) !important;
   outline-offset: 2px !important;
 }
 
@@ -47,53 +57,94 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Header */
+/* ==========================================================================
+   TOP APPLICATION HEADER & ATC GLOBAL TELEMETRY
+   ========================================================================== */
 .app-header {
-  height: 56px;
+  height: 60px;
+  min-height: 60px;
   background-color: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  z-index: 1000;
+  z-index: 1100;
+  gap: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  box-sizing: border-box;
 }
 
 .logo-section {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 .logo-badge {
-  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
-  color: #fff;
-  padding: 5px 9px;
-  border-radius: 6px;
+  background: linear-gradient(135deg, #0284c7, #2563eb);
+  color: #ffffff;
+  padding: 5px 10px;
+  border-radius: 7px;
   font-weight: 800;
-  font-size: 13px;
-  letter-spacing: 1px;
+  font-size: 11.5px;
+  letter-spacing: 1.2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.logo-radar-dot {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
+  animation: pulseLiveDot 2s infinite ease-in-out;
+}
+
+.title-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
 }
 
 .app-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: -0.2px;
+  color: #f8fafc;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .app-subtitle {
   font-size: 10px;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .header-controls {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .airport-selector-wrap {
@@ -101,19 +152,31 @@ body {
   align-items: center;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 3px 6px;
+  border-radius: 8px;
+  padding: 3px 5px 3px 9px;
+  gap: 4px;
+  flex-shrink: 0;
+  height: 34px;
+  box-sizing: border-box;
+}
+
+.airport-selector-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
 }
 
 .airport-select {
   background: transparent;
   border: none;
   color: var(--text-main);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   outline: none;
   cursor: pointer;
-  padding: 3px 5px;
+  padding: 2px 4px;
+  font-family: var(--font-sans);
 }
 
 .airport-select option {
@@ -125,43 +188,120 @@ body {
   background-color: var(--bg-surface);
   color: var(--text-main);
   border: 1px solid var(--border-color);
-  padding: 5px 12px;
-  border-radius: 6px;
+  padding: 6px 12px;
+  border-radius: 7px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .btn:hover {
   background-color: var(--bg-hover);
   border-color: var(--border-highlight);
+  color: #ffffff;
+}
+
+.btn-sm {
+  padding: 4px 9px;
+  font-size: 11px;
+  height: 26px;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
-  border: none;
-  color: white;
+  background: linear-gradient(135deg, #0284c7, #2563eb);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
 }
 
 .btn-primary:hover {
-  opacity: 0.9;
+  background: linear-gradient(135deg, #0369a1, #1d4ed8);
+  box-shadow: 0 3px 12px rgba(37, 99, 235, 0.45);
 }
 
-.status-badge {
+/* Header Action Buttons (Runway, Taxiway Flow, Performance) */
+.btn-runway-config {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 0 10px;
+  height: 34px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.btn-runway-config:hover {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: rgba(56, 189, 248, 0.4);
+  box-shadow: 0 2px 10px rgba(56, 189, 248, 0.15);
+}
+
+.btn-runway-config .rwy-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.btn-runway-config .rwy-text {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.btn-runway-config .rwy-summary {
+  font-family: var(--font-mono);
+  color: var(--accent-cyan);
+  font-weight: 700;
+  font-size: 11px;
+  background: rgba(56, 189, 248, 0.12);
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  white-space: nowrap;
+}
+
+/* Status Indicator Badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-size: 11px;
   font-family: var(--font-mono);
-  background: rgba(16, 185, 129, 0.1);
+  font-weight: 600;
+  background: rgba(16, 185, 129, 0.12);
   border: 1px solid rgba(16, 185, 129, 0.3);
   color: var(--accent-green);
-  padding: 4px 8px;
+  padding: 0 12px;
+  height: 34px;
   border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.status-badge #statusText {
+  white-space: nowrap;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 32px;
+  display: inline-block;
 }
 
 .status-dot {
@@ -169,7 +309,8 @@ body {
   height: 7px;
   border-radius: 50%;
   background-color: currentColor;
-  box-shadow: 0 0 6px currentColor;
+  box-shadow: 0 0 8px currentColor;
+  flex-shrink: 0;
 }
 
 /* Main Layout */
@@ -183,7 +324,7 @@ body {
 #map {
   flex: 1;
   height: 100%;
-  background: #05100c;
+  background: var(--bg-base);
 }
 
 /* ========================================================= */
@@ -191,17 +332,18 @@ body {
 /* ========================================================= */
 .aircraft-hud-panel {
   position: absolute;
-  top: 56px;
-  left: 14px;
+  top: 72px;
+  left: 16px;
   width: 360px;
-  background: rgba(9, 34, 24, 0.96);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--accent-green);
-  border-radius: 12px;
+  background: rgba(11, 17, 32, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-top: 1px solid rgba(56, 189, 248, 0.6);
+  border-radius: 14px;
   padding: 14px;
   z-index: 1000;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.85), 0 0 24px rgba(16, 185, 129, 0.22);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 25px rgba(56, 189, 248, 0.12);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -265,12 +407,12 @@ body {
 }
 
 .btn-hud-tool {
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.4);
-  color: var(--accent-neon-cyan);
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: var(--accent-cyan);
   padding: 6px 12px;
-  min-height: 36px;
-  border-radius: 6px;
+  min-height: 34px;
+  border-radius: 7px;
   font-size: 11.5px;
   font-weight: 700;
   cursor: pointer;
@@ -281,9 +423,10 @@ body {
 }
 
 .btn-hud-tool.active {
-  background: var(--accent-green);
-  color: #061510;
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  background: var(--accent-sapphire);
+  border-color: var(--accent-cyan);
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.6);
 }
 
 .btn-hud-close {
@@ -292,14 +435,14 @@ body {
   color: var(--text-muted);
   font-size: 15px;
   cursor: pointer;
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  min-height: 36px;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 7px;
   transition: all 0.2s;
 }
 
@@ -314,9 +457,9 @@ body {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
-  background: rgba(6, 21, 16, 0.85);
+  background: rgba(15, 23, 42, 0.75);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 8px 10px;
 }
 
@@ -364,8 +507,8 @@ body {
 
 /* Active Taxiway Box */
 .hud-taxiway-box {
-  background: linear-gradient(90deg, rgba(16, 185, 129, 0.2), rgba(9, 32, 23, 0.9));
-  border: 1px solid var(--accent-green);
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.2), rgba(15, 23, 42, 0.9));
+  border: 1px solid rgba(56, 189, 248, 0.4);
   border-radius: 8px;
   padding: 8px 12px;
   display: flex;
@@ -385,7 +528,7 @@ body {
   font-size: 16px;
   font-weight: 800;
   color: var(--accent-neon-cyan);
-  text-shadow: 0 0 8px rgba(16, 232, 170, 0.5);
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
 }
 
 /* Sequence Pipeline Tags */
@@ -599,43 +742,82 @@ body {
 
 /* Sidebar */
 .sidebar {
-  width: 360px;
+  width: 370px;
   background-color: var(--bg-secondary);
   border-left: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   z-index: 1000;
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.4);
+  box-shadow: -4px 0 25px rgba(0, 0, 0, 0.5);
+}
+
+.sidebar-tabs-container {
+  padding: 10px 12px 6px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .sidebar-tabs {
   display: flex;
-  border-bottom: 1px solid var(--border-color);
-  background-color: var(--bg-primary);
+  background: rgba(7, 11, 20, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 9px;
+  padding: 3px;
+  gap: 3px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 .tab-btn {
   flex: 1;
-  padding: 10px 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 4px;
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
   color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   text-align: center;
+  white-space: nowrap;
 }
 
 .tab-btn:hover {
   color: var(--text-main);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .tab-btn.active {
   color: var(--accent-cyan);
-  border-bottom-color: var(--accent-cyan);
-  background-color: var(--bg-secondary);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.3), rgba(56, 189, 248, 0.2));
+  border-color: rgba(56, 189, 248, 0.45);
+  box-shadow: 0 2px 10px rgba(56, 189, 248, 0.15);
+}
+
+.tab-btn .tab-icon {
+  font-size: 11.5px;
+  line-height: 1;
+}
+
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  background: rgba(56, 189, 248, 0.18);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.35);
 }
 
 .sidebar-content {
@@ -792,9 +974,9 @@ body {
 }
 
 .flight-card.selected {
-  border-color: var(--accent-neon-cyan);
-  box-shadow: 0 0 12px rgba(16, 232, 170, 0.3);
-  background: rgba(16, 185, 129, 0.14);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.25), inset 0 0 0 1px rgba(56, 189, 248, 0.2);
+  background: rgba(56, 189, 248, 0.1);
 }
 
 .flight-card.is-live {
@@ -893,7 +1075,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(9, 32, 23, 0.7);
+  background: rgba(15, 23, 42, 0.75);
   padding: 6px 10px;
   border-radius: 6px;
   border: 1px solid var(--border-color);
@@ -956,7 +1138,7 @@ body {
   font-size: 11px;
   color: #94a3b8;
   padding: 10px;
-  background: rgba(18, 51, 38, 0.5);
+  background: rgba(15, 23, 42, 0.6);
   border-radius: 6px;
   border: 1px dashed var(--border-color);
 }
@@ -1083,8 +1265,8 @@ body {
 
 /* Leaflet Custom Marker & Shapes */
 .stand-marker-badge {
-  background: rgba(9, 32, 23, 0.92);
-  border: 2px solid var(--stand-free);
+  background: rgba(11, 17, 32, 0.92);
+  border: 1.5px solid var(--stand-free);
   color: #fff;
   border-radius: 6px;
   padding: 2px 5px;
@@ -1092,7 +1274,8 @@ body {
   font-size: 11px;
   font-weight: 700;
   text-align: center;
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
   white-space: nowrap;
   pointer-events: auto;
   transition: all 0.2s;
@@ -1327,22 +1510,27 @@ body {
   pointer-events: auto;
 }
 
-/* BOTTOM TIMELINE CONTROLLER BAR */
+/* ========================================================= */
+/* BOTTOM 24-HOUR FLOATING TIMELINE DOCK                    */
+/* ========================================================= */
 .timeline-bar {
   position: absolute;
   bottom: max(16px, env(safe-area-inset-bottom, 16px));
   left: 20px;
-  right: 380px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 10px 18px;
+  right: 390px;
+  background: rgba(11, 17, 32, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-top: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 14px;
+  padding: 12px 18px;
   z-index: 1000;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 20px rgba(56, 189, 248, 0.08);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  transition: right 0.25s ease, left 0.25s ease, bottom 0.25s ease;
+  gap: 9px;
+  transition: right 0.25s cubic-bezier(0.16, 1, 0.3, 1), left 0.25s ease, bottom 0.25s ease;
 }
 
 .timeline-top-row {
@@ -1355,45 +1543,116 @@ body {
 .timeline-playback-controls {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-shrink: 0;
 }
 
 .btn-play {
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  min-height: 44px;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
-  border: none;
+  background: linear-gradient(135deg, #0284c7, #2563eb);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: #fff;
-  font-size: 16px;
+  font-size: 15px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 14px rgba(6, 182, 212, 0.5);
-  transition: all 0.2s;
+  box-shadow: 0 0 16px rgba(37, 99, 235, 0.5);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   flex-shrink: 0;
 }
 
 .btn-play:hover {
   transform: scale(1.08);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.6);
+}
+
+.btn-play:active {
+  transform: scale(0.96);
 }
 
 .timeline-clock {
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.timeline-date-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.digital-date {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.btn-live-sync,
+.btn-jump-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 9.5px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  color: #34d399;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-live-sync:hover,
+.btn-jump-live:hover {
+  background: rgba(16, 185, 129, 0.3);
+  color: #ffffff;
+  border-color: #34d399;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.live-dot-pulsing,
+.live-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulseLiveDot 1.5s infinite ease-in-out;
+}
+
+@keyframes pulseLiveDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.6; }
+}
+
+.timeline-time-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .digital-time {
   font-family: var(--font-mono);
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--accent-cyan);
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
   line-height: 1.1;
+  text-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
 }
 
 .digital-label {
@@ -1401,31 +1660,33 @@ body {
   color: var(--text-dim);
   text-transform: uppercase;
   white-space: nowrap;
+  letter-spacing: 0.5px;
+  font-weight: 700;
 }
 
 .timeline-speed-selector {
   display: flex;
   align-items: center;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-color);
+  background: rgba(7, 11, 20, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  padding: 3px;
+  padding: 2px;
   gap: 2px;
 }
 
 .speed-btn {
-  padding: 4px 8px;
-  min-height: 32px;
-  min-width: 32px;
+  padding: 4px 7px;
+  min-height: 28px;
+  min-width: 28px;
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: var(--text-muted);
   font-size: 11px;
   font-family: var(--font-mono);
   font-weight: 700;
   cursor: pointer;
-  border-radius: 5px;
-  transition: all 0.2s;
+  border-radius: 6px;
+  transition: all 0.18s;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1433,17 +1694,20 @@ body {
 
 .speed-btn:hover {
   color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .speed-btn.active {
-  background-color: var(--accent-blue);
-  color: #fff;
+  background: #2563eb;
+  color: #ffffff;
+  border-color: rgba(56, 189, 248, 0.4);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
 }
 
 .timeline-traffic-metrics {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-size: 11px;
   font-family: var(--font-mono);
   overflow-x: auto;
@@ -1464,19 +1728,29 @@ body {
 .traffic-badge {
   display: flex;
   align-items: center;
-  gap: 5px;
-  background-color: var(--bg-primary);
+  gap: 6px;
+  background-color: rgba(15, 23, 42, 0.85);
   border: 1px solid var(--border-color);
   padding: 4px 9px;
-  border-radius: 6px;
+  border-radius: 7px;
   white-space: nowrap;
   flex-shrink: 0;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  transition: all 0.15s ease;
 }
 
-.traffic-badge .count {
-  font-weight: 800;
-  color: var(--text-main);
+.traffic-badge .tb-label {
+  color: var(--text-muted);
+  font-weight: 600;
 }
+
+.traffic-badge.total .count { color: #f8fafc; font-weight: 800; }
+.traffic-badge.arr .count { color: #38bdf8; font-weight: 800; }
+.traffic-badge.taxi .count { color: #f59e0b; font-weight: 800; }
+.traffic-badge.stand .count { color: #10b981; font-weight: 800; }
+.traffic-badge.dep .count { color: #ef4444; font-weight: 800; }
+.traffic-badge.hold .count { color: #fbbf24; font-weight: 800; }
 
 .timeline-slider-row {
   display: flex;
@@ -1484,41 +1758,80 @@ body {
   gap: 12px;
 }
 
-.timeline-slider {
+.timeline-slider-wrap {
   flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.timeline-slider {
+  width: 100%;
   -webkit-appearance: none;
   appearance: none;
-  height: 8px;
-  background: #334155;
+  height: 7px;
+  background: #1e293b;
   border-radius: 4px;
   outline: none;
   cursor: pointer;
-  padding: 6px 0;
-  background-clip: content-box;
   transition: background 0.2s;
 }
 
 .timeline-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: var(--accent-cyan);
-  border: 2px solid #ffffff;
-  box-shadow: 0 0 10px var(--accent-cyan);
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.8);
   cursor: pointer;
-  transition: transform 0.1s;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 
 .timeline-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
+  transform: scale(1.25);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 1);
+}
+
+.timeline-slider-ticks {
+  position: relative;
+  width: 100%;
+  height: 14px;
+  margin-top: 4px;
+}
+
+.slider-tick {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 8.5px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
 }
 
 .time-marker-text {
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--text-dim);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.time-marker-badge {
+  font-size: 9.5px;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
 }
 
 /* Toast Notification */
@@ -1549,6 +1862,32 @@ body {
 /* ========================================================= */
 /* COMPREHENSIVE RESPONSIVE MULTI-DEVICE OPTIMIZATION        */
 /* ========================================================= */
+
+/* 0. Large Laptops & Standard Monitors (< 1440px) */
+@media (max-width: 1440px) {
+  .btn-runway-config .rwy-text {
+    display: none;
+  }
+  .status-badge #statusText {
+    max-width: 200px;
+  }
+}
+
+/* 0.5. Compact Laptops (< 1200px) */
+@media (max-width: 1200px) {
+  .app-subtitle {
+    display: none;
+  }
+  .status-badge #statusText {
+    max-width: 130px;
+  }
+  .header-controls {
+    gap: 6px;
+  }
+  .btn-runway-config {
+    padding: 0 8px;
+  }
+}
 
 /* 1. Tablet & Medium Screens (< 1024px) */
 @media (max-width: 1024px) {
@@ -1793,23 +2132,26 @@ body {
 .btn-runway-config {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  background: rgba(9, 32, 23, 0.85);
-  border: 1px solid rgba(16, 185, 129, 0.45);
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--border-color);
   color: var(--text-main);
-  padding: 5px 10px;
-  border-radius: 6px;
+  padding: 0 10px;
+  height: 34px;
+  border-radius: 8px;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .btn-runway-config:hover {
-  background: rgba(18, 51, 38, 0.95);
-  border-color: var(--accent-green);
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+  background: rgba(30, 41, 59, 0.95);
+  border-color: rgba(56, 189, 248, 0.4);
+  box-shadow: 0 2px 10px rgba(56, 189, 248, 0.15);
 }
 
 .btn-runway-config .rwy-icon {
@@ -1820,17 +2162,20 @@ body {
 .btn-runway-config .rwy-text {
   color: var(--text-muted);
   font-size: 10px;
-  letter-spacing: 0.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
 }
 
 .btn-runway-config .rwy-summary {
   font-family: var(--font-mono);
-  color: var(--accent-neon-cyan);
+  color: var(--accent-cyan);
   font-weight: 700;
-  background: rgba(16, 185, 129, 0.15);
-  padding: 2px 6px;
+  font-size: 11px;
+  background: rgba(56, 189, 248, 0.12);
+  padding: 2px 7px;
   border-radius: 4px;
-  border: 1px solid rgba(16, 185, 129, 0.35);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  white-space: nowrap;
 }
 
 /* Modal Overlay & Card */
@@ -1953,27 +2298,27 @@ body {
 }
 
 .btn-preset {
-  background: rgba(18, 51, 38, 0.7);
+  background: rgba(15, 23, 42, 0.85);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 10px 12px;
   text-align: left;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
 
 .btn-preset:hover {
-  background: rgba(27, 69, 52, 0.85);
-  border-color: var(--accent-green);
+  background: rgba(30, 41, 59, 0.95);
+  border-color: rgba(56, 189, 248, 0.4);
 }
 
 .btn-preset.active {
-  background: rgba(16, 185, 129, 0.2);
-  border-color: var(--accent-neon-cyan);
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.25), rgba(56, 189, 248, 0.15));
+  border-color: #38bdf8;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
 }
 
 .preset-title {
@@ -2645,8 +2990,8 @@ body {
   font-weight: 700;
 }
 
-.btn-preset {
-  background: rgba(6, 21, 16, 0.7);
+.dir-preset-bar .btn-preset {
+  background: rgba(15, 23, 42, 0.85);
   border: 1px solid var(--border-color);
   color: #cbd5e1;
   border-radius: 6px;
@@ -2657,10 +3002,11 @@ body {
   transition: all 0.2s;
 }
 
-.btn-preset:hover, .btn-preset.active {
-  background: rgba(16, 185, 129, 0.25);
-  border-color: #10b981;
-  color: #10e8aa;
+.dir-preset-bar .btn-preset:hover, .dir-preset-bar .btn-preset.active {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.3), rgba(56, 189, 248, 0.2));
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
 }
 
 .corridors-list {
@@ -2677,7 +3023,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(6, 21, 16, 0.85);
+  background: rgba(15, 23, 42, 0.75);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 10px 14px;
@@ -2685,7 +3031,7 @@ body {
 }
 
 .corridor-row-card:hover {
-  border-color: rgba(16, 185, 129, 0.4);
+  border-color: rgba(56, 189, 248, 0.4);
 }
 
 .corridor-info {
@@ -2712,7 +3058,7 @@ body {
 }
 
 .btn-dir-opt {
-  background: rgba(18, 51, 38, 0.6);
+  background: rgba(30, 41, 59, 0.6);
   border: 1px solid var(--border-color);
   color: #94a3b8;
   padding: 5px 9px;
@@ -2753,30 +3099,38 @@ body {
 }
 
 /* ========================================================================== */
-/* Live Airport Weather Telemetry Widget (Top-Left on Map)                   */
+/* Live Airport Weather Telemetry Glassmorphism Card (Top-Left on Map)        */
 /* ========================================================================== */
 .airport-weather-widget {
   position: absolute;
-  top: 14px;
-  left: 14px;
+  top: 16px;
+  left: 16px;
   z-index: 800;
-  width: 320px;
-  background: rgba(10, 26, 20, 0.92);
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  border-radius: 10px;
-  padding: 10px 13px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 18px rgba(16, 185, 129, 0.15);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  width: 350px;
+  background: rgba(11, 17, 32, 0.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7), 0 0 25px rgba(56, 189, 248, 0.08);
   pointer-events: auto;
   user-select: none;
-  transition: all 0.25s ease;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.airport-weather-widget:hover {
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.75), 0 0 30px rgba(56, 189, 248, 0.15);
 }
 
 .airport-weather-widget.weather-compact {
   width: auto;
-  max-width: 360px;
+  max-width: 380px;
   padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(11, 17, 32, 0.92);
 }
 
 .airport-weather-widget.weather-compact .weather-widget-header {
@@ -2786,7 +3140,7 @@ body {
 }
 
 .airport-weather-widget.weather-compact .weather-condition-text {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
 }
 
@@ -2798,29 +3152,25 @@ body {
   display: none;
 }
 
-.airport-weather-widget:hover {
-  border-color: rgba(16, 185, 129, 0.65);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.75), 0 0 24px rgba(16, 185, 129, 0.25);
-}
-
 .weather-widget-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 7px;
-  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding-bottom: 9px;
+  margin-bottom: 10px;
 }
 
 .weather-title-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .weather-main-icon {
-  font-size: 22px;
+  font-size: 26px;
   line-height: 1;
+  filter: drop-shadow(0 2px 6px rgba(56, 189, 248, 0.3));
 }
 
 .weather-title-info {
@@ -2829,17 +3179,19 @@ body {
 }
 
 .weather-station-name {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 800;
-  letter-spacing: 0.5px;
-  color: var(--accent-green, #10b981);
+  letter-spacing: 0.8px;
+  color: #38bdf8;
   text-transform: uppercase;
+  font-family: var(--font-mono);
 }
 
 .weather-condition-text {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 700;
-  color: #f1f5f9;
+  color: #f8fafc;
+  line-height: 1.25;
 }
 
 .weather-header-right {
@@ -2849,14 +3201,14 @@ body {
 }
 
 .btn-weather-minimize {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 700;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -2865,146 +3217,110 @@ body {
 }
 
 .btn-weather-minimize:hover {
-  background: rgba(16, 185, 129, 0.2);
-  color: #34d399;
-  border-color: #10b981;
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.4);
 }
 
 .weather-badge-vfr {
-  padding: 2px 7px;
-  border-radius: 4px;
-  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10.5px;
   font-weight: 800;
   font-family: var(--font-mono, monospace);
-  background: rgba(16, 185, 129, 0.2);
+  background: rgba(16, 185, 129, 0.16);
   color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.4);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  letter-spacing: 0.5px;
 }
 
 .weather-badge-vfr.ifr {
   background: rgba(239, 68, 68, 0.2);
   color: #f87171;
-  border-color: rgba(239, 68, 68, 0.4);
+  border-color: rgba(239, 68, 68, 0.45);
 }
 
 .weather-badge-vfr.mvfr {
   background: rgba(245, 158, 11, 0.2);
   color: #fbbf24;
-  border-color: rgba(245, 158, 11, 0.4);
+  border-color: rgba(245, 158, 11, 0.45);
 }
 
 .weather-widget-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px 12px;
+  gap: 8px;
 }
 
 .weather-metric-item {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 8px 10px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.weather-metric-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(56, 189, 248, 0.25);
 }
 
 .weather-metric-item .metric-icon {
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.2;
+  margin-top: 1px;
 }
 
 .weather-metric-item .metric-body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
 }
 
 .weather-metric-item .metric-label {
   font-size: 8.5px;
   font-weight: 700;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.5px;
   color: #94a3b8;
   text-transform: uppercase;
 }
 
 .weather-metric-item .metric-val {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
-  color: #e2e8f0;
+  color: #f8fafc;
   font-family: var(--font-mono, monospace);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-top: 2px;
 }
 
 .weather-metric-item .metric-sub {
-  font-size: 9px;
-  color: #6ee7b7;
-  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  color: #38bdf8;
+  font-family: var(--font-sans);
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* Timeline Date Row & Digital Clock styling */
-.timeline-clock {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-}
-
-.timeline-date-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  line-height: 1;
-}
-
-.digital-date {
-  font-size: 11px;
-  font-weight: 700;
-  color: #a7f3d0;
-  white-space: nowrap;
-}
-
-.digital-data-window-badge {
-  font-size: 8.5px;
-  font-weight: 800;
-  font-family: var(--font-mono, monospace);
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: rgba(16, 185, 129, 0.2);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.4);
-  letter-spacing: 0.3px;
-}
-
-.timeline-time-row {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-.time-marker-badge {
-  font-size: 9px;
-  font-weight: 800;
-  font-family: var(--font-mono, monospace);
-  color: #38bdf8;
-  background: rgba(14, 165, 233, 0.15);
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  border-radius: 4px;
-  padding: 1px 6px;
-  white-space: nowrap;
+  margin-top: 2px;
 }
 
 @media (max-width: 850px) {
   .airport-weather-widget {
     top: 10px;
     left: 10px;
-    width: 250px;
+    width: 270px;
     padding: 8px 10px;
   }
   .weather-widget-grid {
     grid-template-columns: 1fr;
-    gap: 5px;
+    gap: 6px;
   }
 }
 
@@ -3573,15 +3889,15 @@ body {
 /* PERFORMANCE BENCHMARK & TELEMETRY SUITE STYLES           */
 /* ========================================================= */
 .btn-perf {
-  background: rgba(16, 185, 129, 0.12) !important;
-  border-color: rgba(16, 185, 129, 0.4) !important;
-  color: #34d399 !important;
+  background: rgba(15, 23, 42, 0.85) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-main) !important;
 }
 
 .btn-perf:hover {
-  background: rgba(16, 185, 129, 0.25) !important;
-  border-color: #10b981 !important;
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+  background: rgba(30, 41, 59, 0.95) !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
 }
 
 .perf-modal-card {
@@ -3589,16 +3905,16 @@ body {
   max-width: 900px;
   max-height: 88vh;
   overflow-y: auto;
-  background: #091a13;
-  border: 1px solid #10b981;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(16, 185, 129, 0.2);
+  background: var(--bg-secondary);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(56, 189, 248, 0.15);
 }
 
 .perf-live-strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 8px;
-  background: rgba(5, 16, 12, 0.9);
+  background: rgba(7, 11, 20, 0.85);
   padding: 12px;
   border-radius: 8px;
   border: 1px solid var(--border-color);
@@ -3638,8 +3954,8 @@ body {
 }
 
 .perf-card {
-  background: rgba(13, 38, 28, 0.7);
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 12px;
   display: flex;
@@ -3649,7 +3965,7 @@ body {
 }
 
 .perf-card:hover {
-  border-color: #34d399;
+  border-color: #38bdf8;
   transform: translateY(-2px);
 }
 
@@ -3727,6 +4043,88 @@ body {
   font-size: 11px;
   color: var(--text-muted);
 }
+
+/* ==========================================================================
+   OPENSKY ADS-B TELEMETRY, BADGES & RADAR VISUALIZATIONS
+   ========================================================================== */
+
+/* Header ADS-B Live Button */
+.btn-adsb {
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+.btn-adsb:hover {
+  border-color: #34d399 !important;
+  background: rgba(16, 185, 129, 0.22) !important;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.25) !important;
+}
+
+.btn-adsb .rwy-icon {
+  color: #34d399;
+}
+
+.btn-adsb .rwy-summary {
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.18);
+}
+
+/* Flight Schedule List ADS-B Badge */
+.flight-card-badge-adsb {
+  font-family: var(--font-mono, monospace);
+  font-size: 8.5px;
+  font-weight: 800;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  padding: 1px 5px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+/* Aircraft HUD ADS-B Chip */
+.hud-adsb-chip {
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid #10b981;
+  padding: 2px 7px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.35);
+  letter-spacing: 0.3px;
+}
+
+/* Map Aircraft Radar Label ADS-B Chip */
+.adsb-live-marker-chip {
+  background: rgba(16, 185, 129, 0.9);
+  color: #ffffff;
+  font-family: var(--font-mono, monospace);
+  font-size: 7.5px;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 3px;
+  border: 1px solid #34d399;
+  margin-left: 4px;
+  display: inline-flex;
+  align-items: center;
+  letter-spacing: 0.3px;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+}
+
+/* Map Marker Live Pulsing Aura */
+.adsb-live-marker {
+  filter: drop-shadow(0 0 6px #10b981) drop-shadow(0 0 12px rgba(16, 185, 129, 0.4));
+}
+
 
 
 

@@ -727,7 +727,7 @@ class TaxiwayDirectionManager {
     const count = this.featureDirections.size;
 
     if (headerSummary) {
-      headerSummary.textContent = this.isEditModeActive ? "DÜZENLE: AKTİF (Saat Durduruldu)" : "DÜZENLE: PASİF";
+      headerSummary.textContent = this.isEditModeActive ? "AKTİF (DURAKLATILDI)" : "DÜZENLE (PASİF)";
     }
 
     if (headerBtn) {

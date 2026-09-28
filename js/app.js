@@ -231,9 +231,9 @@ function setupUIEvents() {
         window.setSimulationPlayback(!trafficSim.isPlaying);
       }
     }
-    // Number keys 1-5 for simulation speeds
-    else if (["1", "2", "3", "4", "5"].includes(e.key) && trafficSim) {
-      const speedMap = { "1": 1, "2": 5, "3": 15, "4": 30, "5": 60 };
+    // Number keys 1-6 for simulation speeds (1x, 2x, 5x, 10x, 30x, 60x)
+    else if (["1", "2", "3", "4", "5", "6"].includes(e.key) && trafficSim) {
+      const speedMap = { "1": 1, "2": 2, "3": 5, "4": 10, "5": 30, "6": 60 };
       const speed = speedMap[e.key];
       trafficSim.setSpeed(speed);
       document.querySelectorAll(".speed-btn").forEach(b => {
@@ -719,6 +719,15 @@ function selectAircraft(flightId, autoJumpToTime = false) {
   document.getElementById("hudDestStand").textContent = `Stand ${flight.standRef}`;
   document.getElementById("hudRoute").textContent = `${flight.origin} ➔ ${flight.destination}`;
 
+  // Update ADS-B Live Badge in HUD
+  const hudAdsbBadge = document.getElementById("hudAdsbBadge");
+  if (hudAdsbBadge) {
+    hudAdsbBadge.classList.toggle("hidden", !flight.isLiveADSB);
+    if (flight.isLiveADSB) {
+      hudAdsbBadge.title = `OpenSky ADS-B Canlı Radar ile Tespit Edildi (ICAO24: ${flight.adsbTelemetry?.icao24 || 'N/A'})`;
+    }
+  }
+
   // Draw Glowing Blue Route Polyline
   drawBlueTaxiRoute(flight);
 
@@ -833,6 +842,11 @@ function updateLiveHUD(flight) {
   document.getElementById("hudSpeed").textContent = Math.round(flight.speed || 0);
   document.getElementById("hudAlt").textContent = Math.round(flight.altitude || 0);
   document.getElementById("hudHeading").textContent = Math.round(flight.heading || 0);
+
+  const hudAdsbBadge = document.getElementById("hudAdsbBadge");
+  if (hudAdsbBadge) {
+    hudAdsbBadge.classList.toggle("hidden", !flight.isLiveADSB);
+  }
 
   const phaseElem = document.getElementById("hudPhase");
   const phaseTitles = {
@@ -1049,15 +1063,68 @@ function setupTimelineControls() {
   const btnPlay = document.getElementById("btnPlayPause");
   const slider = document.getElementById("timelineSlider");
   const clock = document.getElementById("digitalClock");
-
-  // Format real-world date above clock
-  const now = new Date();
-  const dateFormatted = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' }).format(now);
   const digitalDateEl = document.getElementById("digitalDate");
-  if (digitalDateEl) digitalDateEl.textContent = `📅 ${dateFormatted}`;
+  const startText = document.getElementById("timelineStartText");
+  const endText = document.getElementById("timelineEndText");
 
-  if (slider) slider.value = Math.floor(trafficSim.simSeconds);
-  if (clock) clock.textContent = trafficSim.formatTime(trafficSim.simSeconds);
+  // Format real-world date and start/end labels
+  if (startText) startText.textContent = `Şimdi (${trafficSim.getWallClockTimeHM(0)})`;
+  if (endText) endText.textContent = `+24 Sa (${trafficSim.getWallClockTimeHM(86400)})`;
+  if (digitalDateEl) digitalDateEl.textContent = `📅 ${trafficSim.getWallDateFormatted()}`;
+  if (clock) clock.textContent = trafficSim.getWallClockTime();
+
+  if (slider) {
+    slider.min = "0";
+    slider.max = "86400";
+    slider.value = Math.floor(trafficSim.simSeconds);
+  }
+
+  // Quick-sync jump to current real-world time of day (CANLI / ANLIK)
+  const handleLiveSync = () => {
+    trafficSim.snapToRealTime();
+    document.querySelectorAll(".speed-btn").forEach(b => {
+      b.classList.toggle("active", parseInt(b.dataset.speed, 10) === 1);
+    });
+    if (clock) clock.textContent = trafficSim.getWallClockTime();
+    if (slider) slider.value = Math.floor(trafficSim.simSeconds);
+    if (digitalDateEl) digitalDateEl.textContent = `📅 ${trafficSim.getWallDateFormatted()}`;
+    showToast(`🟢 Simülasyon saati anlık gerçek zamana (${trafficSim.getWallClockTime()}) eşitlendi.`);
+  };
+
+  const btnLiveSync = document.getElementById("btnLiveSync");
+  if (btnLiveSync) btnLiveSync.addEventListener("click", handleLiveSync);
+
+  const btnJumpLive = document.getElementById("btnJumpLiveNow");
+  if (btnJumpLive) btnJumpLive.addEventListener("click", handleLiveSync);
+
+  // OpenSky ADS-B Header Telemetry Button Click
+  const btnHeaderAdsb = document.getElementById("btnHeaderAdsb");
+  if (btnHeaderAdsb) {
+    btnHeaderAdsb.addEventListener("click", () => {
+      const feed = trafficSim?.liveFeed;
+      const count = feed ? feed.detectedLiveAircraft.size : 0;
+      const status = feed?.lastStatus || "Aktif";
+      const src = feed?.sourceUsed || "OpenSky Network API";
+      showToast(`📡 OpenSky ADS-B Radar: ${status} | Kaynak: ${src}`);
+    });
+  }
+
+  // Listen to OpenSky ADS-B updates
+  if (trafficSim.liveFeed) {
+    trafficSim.liveFeed.onUpdate((feedData) => {
+      const headerAdsbSummary = document.getElementById("headerAdsbSummary");
+      if (headerAdsbSummary) {
+        headerAdsbSummary.textContent = feedData.count > 0 ? `CANLI (${feedData.count} Uçak)` : `CANLI (Taranıyor...)`;
+      }
+      const flightsTab = document.getElementById("tab-flights");
+      if (flightsTab && flightsTab.classList.contains("active")) {
+        const searchInput = document.getElementById("flightSearchInput");
+        if (document.activeElement !== searchInput && typeof renderFlightsList === "function") {
+          renderFlightsList(searchInput?.value || "", false);
+        }
+      }
+    });
+  }
 
   window.setSimulationPlayback = function(play) {
     if (!trafficSim) return;
@@ -1076,30 +1143,35 @@ function setupTimelineControls() {
     }
   };
 
-  btnPlay.addEventListener("click", () => {
-    window.setSimulationPlayback(!trafficSim.isPlaying);
-  });
+  if (btnPlay) {
+    btnPlay.addEventListener("click", () => {
+      window.setSimulationPlayback(!trafficSim.isPlaying);
+    });
+  }
 
-  // Speed multiplier buttons
+  // Speed multiplier buttons (1x, 2x, 5x, 10x, 30x, 60x)
   document.querySelectorAll(".speed-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".speed-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
-      const speed = parseInt(btn.dataset.speed, 10) || 15;
+      const speed = parseInt(btn.dataset.speed, 10) || 1;
       trafficSim.setSpeed(speed);
-      showToast(`Simülasyon hızı: ${speed}x`);
+      showToast(`⚡ Simülasyon hızı: ${speed}x`);
     });
   });
 
   // Slider dragging
-  slider.addEventListener("mousedown", () => { isUserScrubbingTimeline = true; });
-  slider.addEventListener("touchstart", () => { isUserScrubbingTimeline = true; });
+  if (slider) {
+    slider.addEventListener("mousedown", () => { isUserScrubbingTimeline = true; });
+    slider.addEventListener("touchstart", () => { isUserScrubbingTimeline = true; });
 
-  slider.addEventListener("input", (e) => {
-    const sec = parseInt(e.target.value, 10);
-    trafficSim.setTime(sec);
-    clock.textContent = trafficSim.formatTime(sec);
-  });
+    slider.addEventListener("input", (e) => {
+      const sec = parseInt(e.target.value, 10);
+      trafficSim.setTime(sec);
+      if (clock) clock.textContent = trafficSim.getWallClockTime(sec);
+      if (digitalDateEl) digitalDateEl.textContent = `📅 ${trafficSim.getWallDateFormatted(sec)}`;
+    });
+  }
 
   const stopScrubbing = () => { isUserScrubbingTimeline = false; };
   window.addEventListener("mouseup", stopScrubbing);
@@ -1107,18 +1179,33 @@ function setupTimelineControls() {
 
   // Simulation tick callback
   trafficSim.onTick((data) => {
-    clock.textContent = data.timeFormatted;
-    if (!isUserScrubbingTimeline) {
+    if (clock) clock.textContent = data.wallClockTime || data.timeFormatted;
+    if (digitalDateEl && data.wallDateFormatted) {
+      digitalDateEl.textContent = `📅 ${data.wallDateFormatted}`;
+    }
+    if (!isUserScrubbingTimeline && slider) {
       slider.value = Math.floor(data.simSeconds);
+    }
+
+    // Header ADS-B summary
+    const headerAdsbSummary = document.getElementById("headerAdsbSummary");
+    if (headerAdsbSummary) {
+      const count = data.liveAdsbCount !== undefined ? data.liveAdsbCount : (trafficSim.liveFeed ? trafficSim.liveFeed.detectedLiveAircraft.size : 0);
+      headerAdsbSummary.textContent = count > 0 ? `CANLI (${count} Uçak)` : `CANLI (Taranıyor...)`;
     }
 
     // Traffic metrics
     const c = data.counts;
-    document.getElementById("trafficTotalDay").textContent = data.totalFlightsInSchedule || 0;
-    document.getElementById("trafficApproaching").textContent = c.approaching;
-    document.getElementById("trafficTaxiing").textContent = c.taxiing;
-    document.getElementById("trafficOnStand").textContent = c.on_stand;
-    document.getElementById("trafficTakeoff").textContent = c.takeoff;
+    const totalDayEl = document.getElementById("trafficTotalDay");
+    if (totalDayEl) totalDayEl.textContent = data.totalFlightsInSchedule || 0;
+    const appEl = document.getElementById("trafficApproaching");
+    if (appEl) appEl.textContent = c.approaching;
+    const taxiEl = document.getElementById("trafficTaxiing");
+    if (taxiEl) taxiEl.textContent = c.taxiing;
+    const standEl = document.getElementById("trafficOnStand");
+    if (standEl) standEl.textContent = c.on_stand;
+    const depEl = document.getElementById("trafficTakeoff");
+    if (depEl) depEl.textContent = c.takeoff;
     const holdEl = document.getElementById("trafficSafetyHold");
     if (holdEl) holdEl.textContent = c.safetyHold || 0;
 
@@ -1180,6 +1267,10 @@ async function loadAirport(icao) {
 
     if (trafficSim) {
       trafficSim.setAirport(icao);
+      const startText = document.getElementById("timelineStartText");
+      const endText = document.getElementById("timelineEndText");
+      if (startText) startText.textContent = `Şimdi (${trafficSim.getWallClockTimeHM(0)})`;
+      if (endText) endText.textContent = `+24 Sa (${trafficSim.getWallClockTimeHM(86400)})`;
     }
 
     if (window.TaxiwayDirectionManager) {
@@ -1210,7 +1301,8 @@ async function loadAirport(icao) {
 
     const count = rawAirportGeoJSON.features?.length || 0;
     const name = icao === "LTFM" ? "İstanbul Havalimanı (IST)" : "Sabiha Gökçen (SAW)";
-    updateStatus(`${name} - ${count} Unsur Yüklendi`, "ready");
+    const shortName = icao === "LTFM" ? "LTFM · IST" : "LTFJ · SAW";
+    updateStatus(`${shortName} · ${count.toLocaleString('tr-TR')} Unsur`, "ready");
     showToast(`${name} pistleri, taksi yolları ve canlı trafiği hazır.`);
   } catch (err) {
     console.error("Airport load failed:", err);
@@ -1834,6 +1926,7 @@ function renderFlightsList(filterText = "", resetScroll = true) {
           <div class="flight-logo-icon">${livery?.logoSvg || ''}</div>
           <span class="flight-card-callsign">${f.callsign}</span>
           <span class="flight-card-airline">${livery?.displayTag || f.airline}</span>
+          ${f.isLiveADSB ? '<span class="flight-card-badge-adsb" title="OpenSky ADS-B Radar ile Canlı Tespit Edildi">🟢 CANLI ADS-B</span>' : ''}
         </div>
         <span class="flight-card-phase ${phaseInfo.cssClass}">${phaseInfo.label}</span>
       </div>
@@ -1998,12 +2091,33 @@ function handleFileImport(e) {
 function updateStatus(text, state = "ready") {
   const el = document.getElementById("statusText");
   const dot = document.querySelector(".status-dot");
+  const badge = document.querySelector(".status-badge");
   if (el) el.textContent = text;
+  if (badge) badge.title = `Operasyon Durumu: ${text}`;
 
   if (dot) {
-    if (state === "loading") dot.style.backgroundColor = "var(--accent-amber)";
-    else if (state === "error") dot.style.backgroundColor = "var(--accent-red)";
-    else dot.style.backgroundColor = "var(--accent-green)";
+    if (state === "loading") {
+      dot.style.backgroundColor = "var(--accent-amber)";
+      if (badge) {
+        badge.style.color = "var(--accent-amber)";
+        badge.style.borderColor = "rgba(245, 158, 11, 0.4)";
+        badge.style.background = "rgba(245, 158, 11, 0.12)";
+      }
+    } else if (state === "error") {
+      dot.style.backgroundColor = "var(--accent-red)";
+      if (badge) {
+        badge.style.color = "var(--accent-red)";
+        badge.style.borderColor = "rgba(239, 68, 68, 0.4)";
+        badge.style.background = "rgba(239, 68, 68, 0.12)";
+      }
+    } else {
+      dot.style.backgroundColor = "var(--accent-green)";
+      if (badge) {
+        badge.style.color = "var(--accent-green)";
+        badge.style.borderColor = "rgba(16, 185, 129, 0.35)";
+        badge.style.background = "rgba(16, 185, 129, 0.12)";
+      }
+    }
   }
 }
 
@@ -2258,11 +2372,15 @@ function applyRunwayConfigFromModal() {
 
 function updateRunwayHeaderSummary(cfg) {
   const el = document.getElementById("headerRunwaySummary");
+  const btn = document.getElementById("btnRunwayModalOpen");
   if (!el || !cfg || !window.RunwayConfigManager) return;
   const depList = window.RunwayConfigManager.getActiveDepRunways(currentIcao).map(r => r.id);
   const arrList = window.RunwayConfigManager.getActiveArrRunways(currentIcao).map(r => r.id);
   const totalActive = window.RunwayConfigManager.getAllRunwayComplexes(currentIcao).filter(c => c.active).length;
-  el.textContent = `${totalActive} Pist Aktif (${arrList.join('/')} İniş · ${depList.join('/')} Kalkış)`;
+  el.textContent = `${totalActive} Pist · ${arrList[0] || '16R'} 🛬 / ${depList[0] || '17L'} 🛫`;
+  if (btn) {
+    btn.title = `Pist Yönetimi: ${totalActive} Pist Aktif (İniş: ${arrList.join('/')} · Kalkış: ${depList.join('/')})`;
+  }
 }
 
 function renderRunwayATCIndicators(cfg) {

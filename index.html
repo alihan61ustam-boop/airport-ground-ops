@@ -19,9 +19,12 @@
   <!-- Top Header Navigation -->
   <header class="app-header">
     <div class="logo-section">
-      <div class="logo-badge">GROUND-OPS</div>
-      <div>
-        <h1 class="app-title">Havalimanı Yer Operasyonları & Canlı Trafik Simülatörü</h1>
+      <div class="logo-badge">
+        <span class="logo-radar-dot"></span>
+        <span>GROUND-OPS</span>
+      </div>
+      <div class="title-container">
+        <h1 class="app-title">Havalimanı Yer Operasyonları & Canlı Simülatörü</h1>
         <div class="app-subtitle">Sabiha Gökçen (LTFJ) & İstanbul Havalimanı (LTFM)</div>
       </div>
     </div>
@@ -29,37 +32,44 @@
     <div class="header-controls">
       <!-- Airport Selector Dropdown (Exclusive to LTFJ and LTFM) -->
       <div class="airport-selector-wrap">
-        <label for="airportSelect" style="font-size: 11px; color: var(--text-muted); margin-right: 6px; font-weight: 600;">MEYDAN:</label>
-        <select id="airportSelect" class="airport-select">
-          <option value="LTFJ" selected>LTFJ - Sabiha Gökçen (SAW)</option>
-          <option value="LTFM">LTFM - İstanbul Havalimanı (IST)</option>
+        <label for="airportSelect" class="airport-selector-label">MEYDAN:</label>
+        <select id="airportSelect" class="airport-select" aria-label="Aktif Havalimanı Seçimi">
+          <option value="LTFJ" selected>LTFJ · Sabiha Gökçen (SAW)</option>
+          <option value="LTFM">LTFM · İstanbul Havalimanı (IST)</option>
         </select>
-        <button id="btnRefreshAirport" class="btn btn-primary" title="Havalimanını Yeniden Yükle">Yenile</button>
+        <button id="btnRefreshAirport" class="btn btn-primary btn-sm" title="Havalimanını Yeniden Yükle">Yenile</button>
       </div>
 
       <!-- Runway & Direction ATC Control Button -->
-      <button id="btnRunwayModalOpen" class="btn-runway-config" title="Pist Seçimi, Kalkış/İniş Yönü ve Zorunlu Giriş Taksi Yolu Yönetimi">
+      <button id="btnRunwayModalOpen" class="btn-runway-config" title="Pist Seçimi, Kalkış/İniş Yönü ve Dağıtım Yönetimi">
         <span class="rwy-icon">🛫</span>
-        <span class="rwy-text">PİST & YÖN:</span>
+        <span class="rwy-text">PİST:</span>
         <span id="headerRunwaySummary" class="rwy-summary">Yükleniyor...</span>
       </button>
 
       <!-- Taxiway Flow Directions Button -->
       <button id="btnTaxiwayDirModalOpen" class="btn-runway-config btn-taxi-dir" title="Taksi Yolu Yön Düzenleme Modu (Aktif / Pasif)">
         <span class="rwy-icon">🔀</span>
-        <span class="rwy-text">TAKSİ YÖNLERİ:</span>
-        <span id="headerTaxiDirSummary" class="rwy-summary">DÜZENLE (PASİF)</span>
+        <span class="rwy-text">TAKSİ YÖNÜ:</span>
+        <span id="headerTaxiDirSummary" class="rwy-summary">DÜZENLE</span>
+      </button>
+
+      <!-- OpenSky ADS-B Telemetry Indicator -->
+      <button id="btnHeaderAdsb" class="btn-runway-config btn-adsb" title="OpenSky Network Canlı ADS-B Radar Veri Akışı">
+        <span class="rwy-icon">📡</span>
+        <span class="rwy-text">ADS-B:</span>
+        <span id="headerAdsbSummary" class="rwy-summary">CANLI (Bağlanıyor...)</span>
       </button>
 
       <!-- Performance & Benchmark Telemetry Button -->
       <button id="btnPerfBenchmarkOpen" class="btn-runway-config btn-perf" title="Performans & Benchmark Raporu (60 FPS, Bellek & Mikro-Saniye Analizi)">
         <span class="rwy-icon">⚡</span>
-        <span class="rwy-text">PERFORMANS:</span>
+        <span class="rwy-text">FPS:</span>
         <span id="headerPerfFps" class="rwy-summary">60 FPS · 1.2ms</span>
       </button>
 
-      <!-- Status Indicator -->
-      <div class="status-badge">
+      <!-- Status Indicator Badge -->
+      <div class="status-badge" title="Operasyonel Sistem Durumu">
         <span class="status-dot"></span>
         <span id="statusText">Hazır</span>
       </div>
@@ -209,7 +219,10 @@
     <div id="aircraftHUD" class="aircraft-hud-panel hidden">
       <div class="hud-header">
         <div class="hud-title-box">
-          <span id="hudCallsign" class="hud-callsign">TK 1285</span>
+          <div class="hud-title-top-line" style="display: flex; align-items: center; gap: 8px;">
+            <span id="hudCallsign" class="hud-callsign">TK 1285</span>
+            <span id="hudAdsbBadge" class="hud-adsb-chip hidden">🟢 CANLI ADS-B</span>
+          </div>
           <span id="hudAirline" class="hud-airline">Türk Hava Yolları</span>
           <span id="hudReg" class="hud-reg">TC-LNC (A321neo)</span>
         </div>
@@ -295,18 +308,22 @@
           <button id="btnPlayPause" class="btn-play" title="Oynat / Duraklat" aria-label="Simülasyonu Oynat veya Duraklat">⏸</button>
           <div class="timeline-clock">
             <div class="timeline-date-row">
-              <span id="digitalDate" class="digital-date">📅 26 Eylül 2026, Cumartesi</span>
-              <span class="digital-data-window-badge">CANLI VERİ: 21:00'A KADAR</span>
+              <span id="digitalDate" class="digital-date">📅 28 Eylül 2026, Pazartesi</span>
+              <button id="btnLiveSync" class="btn-live-sync" title="Simülasyon Saatini Gerçek Zamana Eşitle (CANLI)">
+                <span class="live-dot-pulsing"></span>
+                <span>CANLI / ANLIK</span>
+              </button>
             </div>
             <div class="timeline-time-row">
-              <span id="digitalClock" class="digital-time">09:50:00</span>
-              <span class="digital-label">SİMÜLASYON SAATİ (TRT) · İLERİYE DOĞRU AKIŞ</span>
+              <span id="digitalClock" class="digital-time">14:58:00</span>
+              <span class="digital-label">SİMÜLASYON SAATİ (TRT) · 24 SAAT İLERİ AKIŞ</span>
             </div>
           </div>
-          <div class="timeline-speed-selector">
-            <button class="speed-btn" data-speed="1">1x</button>
+          <div class="timeline-speed-selector" title="Simülasyon Hız Çarpanı">
+            <button class="speed-btn active" data-speed="1">1x</button>
+            <button class="speed-btn" data-speed="2">2x</button>
             <button class="speed-btn" data-speed="5">5x</button>
-            <button class="speed-btn active" data-speed="15">15x</button>
+            <button class="speed-btn" data-speed="10">10x</button>
             <button class="speed-btn" data-speed="30">30x</button>
             <button class="speed-btn" data-speed="60">60x</button>
           </div>
@@ -314,28 +331,28 @@
 
         <!-- Live Traffic Metrics -->
         <div class="timeline-traffic-metrics">
-          <div class="traffic-badge" title="Toplam Günlük Uçuş Programı">
-            <span style="color: #cbd5e1;">📋 Toplam Uçuş:</span>
-            <span id="trafficTotalDay" class="count">1250</span>
+          <div class="traffic-badge total" title="Toplam Günlük Uçuş Programı">
+            <span class="tb-label">📋 Toplam:</span>
+            <span id="trafficTotalDay" class="count">1265</span>
           </div>
-          <div class="traffic-badge" title="Piste İniş / Yaklaşmadaki Uçaklar">
-            <span style="color: #38bdf8;">🛬 İniş:</span>
+          <div class="traffic-badge arr" title="Piste İniş / Yaklaşmadaki Uçaklar">
+            <span class="tb-label">🛬 İniş:</span>
             <span id="trafficApproaching" class="count">0</span>
           </div>
-          <div class="traffic-badge" title="Taksi Yollarındaki Uçaklar">
-            <span style="color: #f59e0b;">🚕 Taksi:</span>
+          <div class="traffic-badge taxi" title="Taksi Yollarındaki Uçaklar">
+            <span class="tb-label">🚕 Taksi:</span>
             <span id="trafficTaxiing" class="count">0</span>
           </div>
-          <div class="traffic-badge" title="Park Pozisyonundaki Uçaklar">
-            <span style="color: #10b981;">🅿️ Parkta:</span>
+          <div class="traffic-badge stand" title="Park Pozisyonundaki Uçaklar">
+            <span class="tb-label">🅿️ Park:</span>
             <span id="trafficOnStand" class="count">0</span>
           </div>
-          <div class="traffic-badge" title="Pistten Havalanan Uçaklar">
-            <span style="color: #ef4444;">🛫 Kalkış:</span>
+          <div class="traffic-badge dep" title="Pistten Havalanan Uçaklar">
+            <span class="tb-label">🛫 Kalkış:</span>
             <span id="trafficTakeoff" class="count">0</span>
           </div>
-          <div class="traffic-badge" title="Uçuş Güvenliği Ayrım Beklemesinde Olan Uçaklar (≥2 Uçak Boyu & >1.5x Kanat)">
-            <span style="color: #fbbf24;">🛡️ Ayrım Hold:</span>
+          <div class="traffic-badge hold" title="Uçuş Güvenliği Ayrım Beklemesinde Olan Uçaklar (≥2 Uçak Boyu & >1.5x Kanat)">
+            <span class="tb-label">🛡️ Hold:</span>
             <span id="trafficSafetyHold" class="count">0</span>
           </div>
         </div>
@@ -343,10 +360,19 @@
 
       <!-- Scrubber Slider -->
       <div class="timeline-slider-row">
-        <span class="time-marker-text">00:00</span>
-        <input type="range" id="timelineSlider" class="timeline-slider" min="0" max="86399" value="35400" step="1">
-        <span class="time-marker-badge" title="Flightradar24 Canlı Radar Veri Kapsamı">🔴 CANLI RADAR KAPSAMI: 21:00'A KADAR</span>
-        <span class="time-marker-text">23:59</span>
+        <span id="timelineStartText" class="time-marker-text">Şimdi</span>
+        <div class="timeline-slider-wrap">
+          <input type="range" id="timelineSlider" class="timeline-slider" min="0" max="86400" value="0" step="1" aria-label="24 Saatlik Simülasyon Zaman Çizelgesi">
+          <div class="timeline-slider-ticks">
+            <span class="slider-tick" style="left: 0%;">T=0</span>
+            <span class="slider-tick" style="left: 25%;">+6 Sa</span>
+            <span class="slider-tick" style="left: 50%;">+12 Sa</span>
+            <span class="slider-tick" style="left: 75%;">+18 Sa</span>
+            <span class="slider-tick" style="left: 100%;">+24 Sa</span>
+          </div>
+        </div>
+        <span id="timelineWindowBadge" class="time-marker-badge" title="24 Saatlik İleriye Dönük Yer Trafiği Simülasyonu">🟢 24 SAAT CANLI SİMÜLASYON</span>
+        <span id="timelineEndText" class="time-marker-text">+24 Sa</span>
       </div>
     </div>
 
@@ -359,12 +385,27 @@
         <button id="btnCloseSidebar" class="btn-close-sidebar" title="Paneli Kapat">✕</button>
       </div>
 
-      <!-- Sidebar Navigation Tabs -->
-      <div class="sidebar-tabs">
-        <button class="tab-btn active" data-tab="tab-stands">STANDLAR</button>
-        <button class="tab-btn" data-tab="tab-flights">UÇUŞLAR (<span id="flightCountTab">0</span>)</button>
-        <button class="tab-btn" data-tab="tab-editor">BİLGİ İŞLEME</button>
-        <button class="tab-btn" data-tab="tab-data">FLIGHTRADAR & VERİ</button>
+      <!-- Sidebar Navigation Tabs (Segmented Pill Bar) -->
+      <div class="sidebar-tabs-container">
+        <div class="sidebar-tabs" role="tablist">
+          <button class="tab-btn active" data-tab="tab-stands" role="tab" aria-selected="true" title="Park Pozisyonları ve Standlar">
+            <span class="tab-icon">🅿️</span>
+            <span class="tab-label">STANDLAR</span>
+          </button>
+          <button class="tab-btn" data-tab="tab-flights" role="tab" aria-selected="false" title="Canlı Uçuş Programı ve Ayrım Takibi">
+            <span class="tab-icon">✈️</span>
+            <span class="tab-label">UÇUŞLAR</span>
+            <span class="tab-badge" id="flightCountTab">0</span>
+          </button>
+          <button class="tab-btn" data-tab="tab-editor" role="tab" aria-selected="false" title="Stand ve Uçuş Bilgi İşleme">
+            <span class="tab-icon">📝</span>
+            <span class="tab-label">İŞLEME</span>
+          </button>
+          <button class="tab-btn" data-tab="tab-data" role="tab" aria-selected="false" title="Flightradar24 ve Veri Yönetimi">
+            <span class="tab-icon">📡</span>
+            <span class="tab-label">RADAR & VERİ</span>
+          </button>
+        </div>
       </div>
 
       <div class="sidebar-content">
